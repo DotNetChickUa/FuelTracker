@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using FuelTracker.Application.Identity;
 using FuelTracker.Application.Identity.Auth;
 using FuelTracker.Infrastructure.Database;
@@ -10,8 +11,7 @@ namespace FuelTracker.Components.Pages;
 
 public partial class Register(
     NavigationManager navigationManager,
-    FuelTrackerDbContext dbContext,
-    IAuthService authService) : ComponentBase
+    FuelTrackerDbContext dbContext) : ComponentBase
 {
     private string? _email;
     private string? _password;
@@ -42,6 +42,13 @@ public partial class Register(
         if (!string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
         {
             _error = "Passwords do not match.";
+            return;
+        }
+
+        // Enforce password policy: minimum 8 characters; must include at least 1 letter and 1 number
+        if ((_password?.Length ?? 0) < 8 || !(_password!.Any(char.IsLetter) && _password!.Any(char.IsDigit)))
+        {
+            _error = "Password must be at least 8 characters and include at least one letter and one number.";
             return;
         }
 

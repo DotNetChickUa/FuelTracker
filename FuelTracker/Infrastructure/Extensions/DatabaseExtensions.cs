@@ -8,7 +8,7 @@ public static class DatabaseExtensions
 {
     public static void AddDatabase(this IHostApplicationBuilder builder)
     {
-        builder.Services.AddDbContext<FuelTrackerDbContext>(options =>
+        builder.Services.AddPooledDbContextFactory<FuelTrackerDbContext>(options =>
             options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
     }
 }

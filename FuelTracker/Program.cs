@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using FuelTracker.Application.Identity;
 using FuelTracker.Application.Identity.Auth;
-using FuelTracker.Application.Roles;
-using FuelTracker.Application.Users;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using FuelTracker.Components;
@@ -24,14 +22,10 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
-builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.AddDatabase();
 builder.AddAuth();
 
-builder.AddIdentity();
-builder.AddUsers();
-builder.AddRoles();
 
 var app = builder.Build();
 

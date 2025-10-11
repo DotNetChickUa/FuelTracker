@@ -14,7 +14,7 @@
                 <MudAlert Severity="Severity.Success" Dense="true">@_success</MudAlert>
             }
 
-            <MudTextField Label="Email" @bind-Value="_email" Required="true" Disabled="_busy" Placeholder="Enter your email" />
+            <MudTextField Label="Email" @bind-Value="_email" InputType="InputType.Email" Required="true" Disabled="_busy" Placeholder="Enter your email" />
             <MudTextField Label="Password" @bind-Value="_password" InputType="InputType.Password" Required="true" Disabled="_busy" Placeholder="Enter your password" />
             <MudTextField Label="Confirm password" @bind-Value="_confirmPassword" InputType="InputType.Password" Required="true" Disabled="_busy" Placeholder="Re-enter your password" />
 
