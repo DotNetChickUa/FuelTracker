@@ -30,12 +30,12 @@ public static class UnitConverter
         => volumeL <= 0 ? 0 : distanceKm / volumeL;
 
     // cost per liter (canonical currency)
-    public static double CostPerLiter(double totalCost, double volumeL)
-        => volumeL <= 0 ? 0 : totalCost / volumeL;
+    public static decimal CostPerLiter(decimal totalCost, double volumeL)
+        => volumeL <= 0 ? 0 : totalCost / (decimal)volumeL;
 
     // cost per km (canonical currency)
-    public static double CostPerKm(double totalCost, double distanceKm)
-        => distanceKm <= 0 ? 0 : totalCost / distanceKm;
+    public static decimal CostPerKm(decimal totalCost, double distanceKm)
+        => distanceKm <= 0 ? 0 : totalCost / (decimal)distanceKm;
 
     // View-time conversion helpers for derived metrics
     // Convert consumption to user's preferred (e.g., L/100km or gal/100mi)
@@ -69,12 +69,12 @@ public static class UnitConverter
     }
 
     // Convert cost per distance (per km -> per mi if selected)
-    public static double ConvertCostPerDistance(double costPerKm, DistanceUnit du)
-        => du == DistanceUnit.Kilometer ? costPerKm : costPerKm * KmPerMile;
+    public static decimal ConvertCostPerDistance(decimal costPerKm, DistanceUnit du)
+        => du == DistanceUnit.Kilometer ? costPerKm : costPerKm * (decimal)KmPerMile;
 
     // Convert cost per volume (per L -> per gal if selected)
-    public static double ConvertCostPerVolume(double costPerL, VolumeUnit vu)
-        => vu == VolumeUnit.Liter ? costPerL : costPerL * LiterPerGallonUS;
+    public static decimal ConvertCostPerVolume(decimal costPerL, VolumeUnit vu)
+        => vu == VolumeUnit.Liter ? costPerL : costPerL * (decimal)LiterPerGallonUS;
 
     public static string ConsumptionLabel(DistanceUnit du, VolumeUnit vu)
         => $"{(vu == VolumeUnit.Liter ? "L" : "gal")}/100{(du == DistanceUnit.Kilometer ? "km" : "mi")}";
