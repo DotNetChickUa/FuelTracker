@@ -1,0 +1,53 @@
+﻿@page "/profile"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject FuelTracker.Application.Units.IUnitService Units
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudPaper Class="pa-6 mt-6">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h5">Profile</MudText>
+
+            <AuthorizeView>
+                Hello @context.User.Identity?.Name!
+            </AuthorizeView>
+            
+            <MudTextField Label="Currency (ISO)" @bind-Value="_model.CurrencyIsoCode" />
+
+            <MudSelect Label="Distance Unit" T="FuelTracker.Application.Units.DistanceUnit" @bind-Value="_model.DistanceUnit">
+                <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Kilometer">Kilometers (km)</MudSelectItem>
+                <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Mile">Miles (mi)</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect Label="Volume Unit" T="FuelTracker.Application.Units.VolumeUnit" @bind-Value="_model.VolumeUnit">
+                <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.Liter">Liters (L)</MudSelectItem>
+                <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.GallonUS">Gallons (US gal)</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField Label="Time Zone" @bind-Value="_model.TimeZone" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private FuelTracker.Application.Units.UnitSettings _model = new();
+
+    protected override void OnInitialized()
+    {
+        // clone current settings
+        _model = new FuelTracker.Application.Units.UnitSettings
+        {
+            CurrencyIsoCode = Units.Settings.CurrencyIsoCode,
+            DistanceUnit = Units.Settings.DistanceUnit,
+            VolumeUnit = Units.Settings.VolumeUnit,
+            TimeZone = Units.Settings.TimeZone
+        };
+    }
+
+    private void Save()
+    {
+        Units.Update(_model);
+    }
+}

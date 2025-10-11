@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FuelTracker.Application.Identity;
 using FuelTracker.Application.Identity.Auth;
+using FuelTracker.Application.Units;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using FuelTracker.Components;
@@ -16,6 +17,7 @@ using MudBlazor.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddMudServices();
+builder.Services.AddScoped<IUnitService, UnitService>();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

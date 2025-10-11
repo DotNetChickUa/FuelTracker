@@ -1,7 +1,56 @@
 ﻿@page "/"
-
+        
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
 
-Welcome to your new app.
+<AuthorizeView>
+    <NotAuthorized>
+        Fuel Tracker Landing page
+    </NotAuthorized>
+    <Authorized>
+        <MudStack Spacing="2" Class="mt-4">
+            <MudText Typo="Typo.h5">Demo Stats (view-only conversions)</MudText>
+            @* Canonical stored values *@
+            @{
+                double distanceKm = 500; // canonical demo
+                double volumeL = 35;
+                double totalCost = 70;
+                var s = Units.Settings;
+                var consL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(distanceKm, volumeL);
+                var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(consL100, s.DistanceUnit, s.VolumeUnit);
+                var dpv = FuelTracker.Application.Units.UnitConverter.DistancePerLiter(distanceKm, volumeL);
+                var dpvView = FuelTracker.Application.Units.UnitConverter.ConvertDistancePerVolume(dpv, s.DistanceUnit, s.VolumeUnit);
+                var cPerKm = FuelTracker.Application.Units.UnitConverter.CostPerKm(totalCost, distanceKm);
+                var cPerVol = FuelTracker.Application.Units.UnitConverter.CostPerLiter(totalCost, volumeL);
+                var cPerKmView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(cPerKm, s.DistanceUnit);
+                var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(cPerVol, s.VolumeUnit);
+            }
+            <MudText>@Units.Settings.CurrencyIsoCode</MudText>
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudText>Consumption: @consView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                    <MudText>Distance per volume: @dpvView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.DistancePerVolumeLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                    <MudText>Cost per distance: @cPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
+                    <MudText>Cost per volume: @cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
+                </MudStack>
+            </MudPaper>
+            <MudText Typo="Typo.caption">Change units in Settings to see values and labels update. Stored canonical data remains km/L.</MudText>
+        </MudStack>
+
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    private FuelTracker.Application.Units.IUnitService Units { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Units.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Units.OnChange -= StateHasChanged;
+    }
+}
