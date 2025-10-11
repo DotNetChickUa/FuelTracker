@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FuelTracker.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(FuelTrackerDbContext))]
-    [Migration("20251011103137_Vehicles")]
-    partial class Vehicles
+    [Migration("20251011110633_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,11 +26,23 @@ namespace FuelTracker.Infrastructure.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Brand")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("TEXT");
 
-                    b.Property<double>("DistanceKm")
+                    b.Property<string>("Grade")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("OdometerKm")
                         .HasColumnType("REAL");
+
+                    b.Property<string>("Station")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("TotalCost")
                         .HasColumnType("TEXT");

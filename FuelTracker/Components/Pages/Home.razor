@@ -90,10 +90,28 @@
         {
             query = query.Where(e => e.VehicleId == _selectedVehicleId);
         }
-        var entries = await query.ToListAsync();
+        var entries = await query.OrderBy(e => e.VehicleId).ThenBy(e => e.Date).ToListAsync();
         if (entries.Count > 0)
         {
-            _distanceKm = entries.Sum(e => e.DistanceKm);
+            // Compute distance as sum of positive differences between consecutive odometer readings per vehicle
+            _distanceKm = 0;
+            Guid currentVehicle = Guid.Empty;
+            double lastOdo = double.NaN;
+            foreach (var e in entries)
+            {
+                if (e.VehicleId != currentVehicle)
+                {
+                    currentVehicle = e.VehicleId;
+                    lastOdo = double.NaN;
+                }
+                var odo = e.OdometerKm;
+                if (!double.IsNaN(lastOdo))
+                {
+                    var diff = odo - lastOdo;
+                    if (diff > 0) _distanceKm += diff;
+                }
+                lastOdo = odo;
+            }
             _volumeL = entries.Sum(e => e.VolumeL);
             _totalCost = entries.Sum(e => (double)e.TotalCost);
         }

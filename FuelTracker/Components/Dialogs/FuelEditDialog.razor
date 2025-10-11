@@ -1,0 +1,197 @@
+﻿@using MudBlazor
+@using FuelTracker.Infrastructure.Database
+@using FuelTracker.Infrastructure.Database.Entities
+@using Microsoft.EntityFrameworkCore
+@inject FuelTrackerDbContext Db
+
+<CascadingValue Value="this">
+    <MudDialog>
+        <DialogContent>
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">@(_editing?.Id == Guid.Empty ? "Add Fill-Up" : "Edit Fill-Up")</MudText>
+                <MudSelect T="Guid" Label="Vehicle" @bind-Value="_editing!.VehicleId" Required="true" Disabled="_editing!.Id != Guid.Empty">
+                    @foreach (var v in Vehicles)
+                    {
+                        <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudDatePicker Label="Date" @bind-Date="_date" Required="true" />
+                <MudNumericField TValue="double" Label="Odometer (km)" @bind-Value="_editing!.OdometerKm" Required="true" Min="0" Adornment="Adornment.End" AdornmentText="km" />
+                <MudTextField Label="Station" @bind-Value="_editing!.Station" />
+                <MudTextField Label="Fuel Brand" @bind-Value="_editing!.Brand" />
+                <MudTextField Label="Fuel Grade" @bind-Value="_editing!.Grade" />
+                <MudNumericField TValue="double" Label="Quantity (L)" @bind-Value="_editing!.VolumeL" Required="true" Min="0.0001" Adornment="Adornment.End" AdornmentText="L" />
+                <MudNumericField TValue="decimal" Label="Total Amount" @bind-Value="_editing!.TotalCost" Required="true" Min="0.01m" Adornment="Adornment.End" AdornmentText="@Currency" />
+                <MudTextField Label="Notes" @bind-Value="_editing!.Notes" Lines="3" MaxLength="500" />
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="!CanSave">Save</MudButton>
+        </DialogActions>
+    </MudDialog>
+</CascadingValue>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public List<Vehicle> Vehicles { get; set; } = new();
+    [Parameter] public FuelEntry? Entry { get; set; }
+    [Parameter] public string Currency { get; set; } = "";
+
+    private FuelEntry? _editing;
+    private DateTime? _date;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _date = DateTime.UtcNow.Date;
+        if (Entry is null)
+        {
+            _editing = new FuelEntry
+            {
+                Id = Guid.Empty,
+                UserId = UserId,
+                VehicleId = Vehicles.FirstOrDefault()?.Id ?? Guid.Empty,
+                OdometerKm = 0,
+                VolumeL = 0,
+                TotalCost = 0
+            };
+        }
+        else
+        {
+            _editing = new FuelEntry
+            {
+                Id = Entry.Id,
+                UserId = Entry.UserId,
+                VehicleId = Entry.VehicleId,
+                Date = Entry.Date,
+                OdometerKm = Entry.OdometerKm,
+                VolumeL = Entry.VolumeL,
+                TotalCost = Entry.TotalCost,
+                Station = Entry.Station,
+                Brand = Entry.Brand,
+                Grade = Entry.Grade,
+                Notes = Entry.Notes
+            };
+            _date = Entry.Date;
+        }
+    }
+
+    private bool CanSave => _editing is not null
+                            && _editing.VehicleId != Guid.Empty
+                            && _date.HasValue
+                            && _editing.VolumeL > 0
+                            && _editing.TotalCost > 0
+                            && _editing.OdometerKm >= 0
+                            && (!_date.HasValue || _date.Value.Date <= DateTime.UtcNow.Date)
+                            && (_editing.Notes == null || _editing.Notes.Length <= 500);
+
+    private async Task Save()
+    {
+        if (_editing == null) return;
+        _error = null;
+
+        // Validate date not in future
+        if (!_date.HasValue || _date.Value.Date > DateTime.UtcNow.Date)
+        {
+            _error = "Date cannot be in the future.";
+            return;
+        }
+
+        // Vehicle ownership check
+        var vehicle = await Db.Set<Vehicle>().FirstOrDefaultAsync(v => v.Id == _editing.VehicleId && v.UserId == UserId);
+        if (vehicle is null)
+        {
+            _error = "Invalid vehicle.";
+            return;
+        }
+
+        // Integrity: positive quantities
+        if (_editing.VolumeL <= 0 || _editing.TotalCost <= 0)
+        {
+            _error = "Quantity and total amount must be positive.";
+            return;
+        }
+
+        // Notes length
+        if ((_editing.Notes?.Length ?? 0) > 500)
+        {
+            _error = "Notes cannot exceed 500 characters.";
+            return;
+        }
+
+        // For odometer sequence constraints, check adjacent entries for this vehicle
+        var siblings = await Db.Set<FuelEntry>()
+            .Where(e => e.UserId == UserId && e.VehicleId == _editing.VehicleId && e.Id != _editing.Id)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.Id)
+            .ToListAsync();
+
+        // When inserting among others, enforce that odometer is strictly greater than previous entry's odometer
+        // and less than next entry's odometer
+        var idx = siblings.FindIndex(e => e.Date > _date!.Value || (e.Date == _date!.Value && e.Id.CompareTo(_editing.Id) > 0));
+        var prev = idx <= 0 ? siblings.LastOrDefault(s => s.Date <= _date) : siblings[idx - 1];
+        var next = idx == -1 ? null : siblings.ElementAtOrDefault(idx);
+
+        if (prev is not null && _editing.OdometerKm <= prev.OdometerKm)
+        {
+            _error = "Odometer must be greater than the previous entry for this vehicle.";
+            return;
+        }
+        if (next is not null && _editing.OdometerKm >= next.OdometerKm)
+        {
+            _error = "Odometer must be less than the next entry for this vehicle.";
+            return;
+        }
+
+        if (_editing.Id == Guid.Empty)
+        {
+            var toAdd = new FuelEntry
+            {
+                UserId = UserId,
+                VehicleId = _editing.VehicleId,
+                Date = _date.Value,
+                OdometerKm = _editing.OdometerKm,
+                VolumeL = _editing.VolumeL,
+                TotalCost = _editing.TotalCost,
+                Station = string.IsNullOrWhiteSpace(_editing.Station) ? null : _editing.Station!.Trim(),
+                Brand = string.IsNullOrWhiteSpace(_editing.Brand) ? null : _editing.Brand!.Trim(),
+                Grade = string.IsNullOrWhiteSpace(_editing.Grade) ? null : _editing.Grade!.Trim(),
+                Notes = string.IsNullOrWhiteSpace(_editing.Notes) ? null : _editing.Notes!.Trim()
+            };
+            await Db.AddAsync(toAdd);
+        }
+        else
+        {
+            var existing = await Db.Set<FuelEntry>().FirstOrDefaultAsync(e => e.Id == _editing.Id && e.UserId == UserId);
+            if (existing is null)
+            {
+                MudDialog?.Cancel();
+                return;
+            }
+            existing.VehicleId = _editing.VehicleId; // Not changeable in UI when editing, but keep for completeness
+            existing.Date = _date.Value;
+            existing.OdometerKm = _editing.OdometerKm;
+            existing.VolumeL = _editing.VolumeL;
+            existing.TotalCost = _editing.TotalCost;
+            existing.Station = string.IsNullOrWhiteSpace(_editing.Station) ? null : _editing.Station!.Trim();
+            existing.Brand = string.IsNullOrWhiteSpace(_editing.Brand) ? null : _editing.Brand!.Trim();
+            existing.Grade = string.IsNullOrWhiteSpace(_editing.Grade) ? null : _editing.Grade!.Trim();
+            existing.Notes = string.IsNullOrWhiteSpace(_editing.Notes) ? null : _editing.Notes!.Trim();
+        }
+
+        await Db.SaveChangesAsync();
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

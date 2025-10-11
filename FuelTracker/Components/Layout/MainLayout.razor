@@ -1,23 +1,24 @@
 ﻿@inherits LayoutComponentBase
 
 <MudRTLProvider RightToLeft="_rightToLeft">
-	<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" />
-	<MudPopoverProvider />
+	<MudThemeProvider @bind-IsDarkMode="@_isDarkMode"/>
+	<MudPopoverProvider/>
 	<MudDialogProvider CloseButton="true"
-					   CloseOnEscapeKey="true"
-					   BackdropClick="false"
-					   Position="DialogPosition.Center" />
-	<MudSnackbarProvider />
+	                   CloseOnEscapeKey="true"
+	                   BackdropClick="false"
+	                   Position="DialogPosition.Center"/>
+	<MudSnackbarProvider/>
 
 	<MudLayout>
 		<MudAppBar Elevation="1">
 			<MudHidden Breakpoint="Breakpoint.SmAndDown">
 				<MudLink Href="/">
-					<img src="favicon.png" alt="Fuel Tracker" class="mud-icon-root mud-icon-size-large" />
+					<img src="favicon.png" alt="Fuel Tracker" class="mud-icon-root mud-icon-size-large"/>
 				</MudLink>
 			</MudHidden>
 			<MudHidden Breakpoint="Breakpoint.MdAndUp">
-				<MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
+				<MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" Edge="Edge.Start"
+				               OnClick="DrawerToggle"/>
 			</MudHidden>
 			<MudHidden Breakpoint="Breakpoint.Xs">
 				<MudLink Href="/" Typo="Typo.h6" Class="ml-4" Color="Color.Inherit">Fuel Tracker</MudLink>
@@ -25,22 +26,20 @@
 			<MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
 				<MudLink Href="/" Typo="Typo.subtitle2" Color="Color.Inherit">Fuel Tracker</MudLink>
 			</MudHidden>
-			<MudSpacer />
+			<MudSpacer/>
 			<MudToggleIconButton @bind-Toggled="_rightToLeft"
-								 Icon="@Icons.Material.Filled.FormatTextdirectionRToL"
-								 ToggledIcon="@Icons.Material.Filled.FormatTextdirectionRToL"
-								 Color="Color.Inherit" />
+			                     Icon="@Icons.Material.Filled.FormatTextdirectionRToL"
+			                     ToggledIcon="@Icons.Material.Filled.FormatTextdirectionRToL"
+			                     Color="Color.Inherit"/>
 		</MudAppBar>
 
 		<MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
-			<AuthorizeView>
-				<NavMenu />
-			</AuthorizeView>
+			<NavMenu/>
 			<MudLink Href="https://www.buymeacoffee.com/vlad.antonyuk" Target="_blank">
 				<MudImage Src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png"
-						  Alt="Buy Me A Coffee"
-						  Fluid="true"
-						  Class="side-image" />
+				          Alt="Buy Me A Coffee"
+				          Fluid="true"
+				          Class="side-image"/>
 			</MudLink>
 		</MudDrawer>
 		<MudMainContent>
@@ -56,7 +55,7 @@
 				</ErrorBoundary>
 			</MudContainer>
 			<MudScrollToTop Style="z-index: 1200">
-				<MudFab StartIcon="@Icons.Material.Filled.ArrowUpward" Color="Color.Primary" />
+				<MudFab StartIcon="@Icons.Material.Filled.ArrowUpward" Color="Color.Primary"/>
 			</MudScrollToTop>
 		</MudMainContent>
 	</MudLayout>
@@ -73,6 +72,7 @@
 	{
 		_drawerOpen = !_drawerOpen;
 	}
+
 }
 
 <div id="blazor-error-ui" data-nosnippet>

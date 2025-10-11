@@ -1,0 +1,151 @@
+﻿@page "/fuel"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db
+@inject MudBlazor.IDialogService DialogService
+@using FuelTracker.Infrastructure.Database.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using FuelTracker.Components.Dialogs
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <MudContainer MaxWidth="MaxWidth.Medium">
+                <MudPaper Class="pa-6 mt-6">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h5">Fuel History</MudText>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudSelect T="Guid" Value="_vehicleFilter" ValueChanged="OnVehicleFilterChanged" Dense="true" Class="w-25">
+                                <MudSelectItem Value="Guid.Empty">All vehicles</MudSelectItem>
+                                @foreach (var v in _vehicles)
+                                {
+                                    <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudDatePicker Label="From" @bind-Date="_from" Dense="true" />
+                            <MudDatePicker Label="To" @bind-Date="_to" Dense="true" />
+                            <MudTextField Label="Brand" @bind-Value="_brand" Dense="true" />
+                            <MudTextField Label="Grade" @bind-Value="_grade" Dense="true" />
+                            <MudTextField Label="Station" @bind-Value="_station" Dense="true" />
+                            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.FilterList" OnClick="Load">Apply</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="Create">Add fill-up</MudButton>
+                        </MudStack>
+                        <MudTable Items="_entries" Dense="true" RowsPerPage="25" Bordered="true" Hover="true">
+                            <HeaderContent>
+                                <MudTh>Date</MudTh>
+                                <MudTh>Vehicle</MudTh>
+                                <MudTh>Odometer</MudTh>
+                                <MudTh>Station</MudTh>
+                                <MudTh>Brand</MudTh>
+                                <MudTh>Grade</MudTh>
+                                <MudTh>Liters</MudTh>
+                                <MudTh>Total</MudTh>
+                                <MudTh></MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="row">
+                                <MudTd>@row.Date.ToLocalTime().ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd>@_vehicleLookup[row.VehicleId]</MudTd>
+                                <MudTd>@row.Odometer.ToString("0")</MudTd>
+                                <MudTd>@row.Station</MudTd>
+                                <MudTd>@row.Brand</MudTd>
+                                <MudTd>@row.Grade</MudTd>
+                                <MudTd>@row.VolumeL.ToString("0.###")</MudTd>
+                                <MudTd>@row.TotalCost.ToString("0.00")</MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(()=>Edit(row))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(()=>Delete(row))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudStack>
+                </MudPaper>
+            </MudContainer>
+        </Authorized>
+        <NotAuthorized>
+            <MudText>You must be signed in.</MudText>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
+
+    private Guid _userId;
+    private List<Vehicle> _vehicles = new();
+    private Dictionary<Guid, string> _vehicleLookup = new();
+    private List<FuelEntryEx> _entries = new();
+
+    private Guid _vehicleFilter = Guid.Empty;
+    private DateTime? _from;
+    private DateTime? _to;
+    private string? _brand;
+    private string? _grade;
+    private string? _station;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await (AuthTask ?? throw new InvalidOperationException()).ConfigureAwait(false);
+        var idStr = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(idStr, out _userId)) return;
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).OrderBy(v => v.Name).ToListAsync();
+        _vehicleLookup = _vehicles.ToDictionary(v => v.Id, v => v.Name);
+
+        var q = Db.Set<FuelEntry>().Where(e => e.UserId == _userId);
+        if (_vehicleFilter != Guid.Empty) q = q.Where(e => e.VehicleId == _vehicleFilter);
+        if (_from.HasValue) q = q.Where(e => e.Date >= _from.Value);
+        if (_to.HasValue) q = q.Where(e => e.Date <= _to.Value);
+        if (!string.IsNullOrWhiteSpace(_brand)) q = q.Where(e => e.Brand != null && e.Brand.Contains(_brand!));
+        if (!string.IsNullOrWhiteSpace(_grade)) q = q.Where(e => e.Grade != null && e.Grade.Contains(_grade!));
+        if (!string.IsNullOrWhiteSpace(_station)) q = q.Where(e => e.Station != null && e.Station.Contains(_station!));
+        var list = await q.OrderByDescending(e => e.Date).ToListAsync();
+        _entries = list.Select(e => new FuelEntryEx(e, _vehicleLookup.TryGetValue(e.VehicleId, out var n) ? n : "")) .ToList();
+        StateHasChanged();
+    }
+
+    private Task OnVehicleFilterChanged(Guid id)
+    {
+        _vehicleFilter = id;
+        return Load();
+    }
+
+    private async Task Create()
+    {
+        var dialogRef = await DialogService.ShowAsync<FuelEditDialog>("Add Fill-Up", new DialogParameters{ ["UserId"]=_userId, ["Vehicles"]=_vehicles });
+        var result = await dialogRef.Result;
+        if (!result.Canceled) await Load();
+    }
+
+    private async Task Edit(FuelEntryEx e)
+    {
+        var dialogRef = await DialogService.ShowAsync<FuelEditDialog>("Edit Fill-Up", new DialogParameters{ ["UserId"]=_userId, ["Vehicles"]=_vehicles, ["Entry"]=e.Source });
+        var result = await dialogRef.Result;
+        if (!result.Canceled) await Load();
+    }
+
+    private async Task Delete(FuelEntryEx e)
+    {
+        Db.Remove(e.Source);
+        await Db.SaveChangesAsync();
+        await Load();
+    }
+
+    private record FuelEntryEx(FuelEntry Source, string VehicleName)
+    {
+        public Guid Id => Source.Id;
+        public Guid VehicleId => Source.VehicleId;
+        public DateTime Date => Source.Date;
+        public double Odometer => Source.OdometerKm;
+        public string Station => Source.Station ?? string.Empty;
+        public string Brand => Source.Brand ?? string.Empty;
+        public string Grade => Source.Grade ?? string.Empty;
+        public double VolumeL => Source.VolumeL;
+        public decimal TotalCost => Source.TotalCost;
+    }
+}
