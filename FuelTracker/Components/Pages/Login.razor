@@ -1,33 +1,21 @@
-@page "/account/login"
+@page "/login"
 
-<MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="d-flex justify-center">
-    <MudPaper Elevation="25" Class="pa-6 mt-12" Style="width:100%">
-        <MudStack Spacing="2">
-            <MudText Typo="Typo.h5" Align="Align.Center">Sign in</MudText>
 
-            @if (!string.IsNullOrEmpty(_error))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
-            }
+<form method="post" action="api/account/login">
+    <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+    <input type="hidden" name="remember" value="@RememberMe.ToString()" />
+    <AntiforgeryToken />
+    <MudTextField T="string" @bind-Value="Email" Label="Email" Required=true name="email" />
+    <MudTextField T="string" @bind-Value="Password" InputType="InputType.Password" Label="Password" Required=true name="password" />
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Login</MudButton>
+</form>
 
-            <MudTextField Label="Email" @bind-Value="_email" Required="true" Disabled="_busy" Placeholder="Enter your email" />
-            <MudTextField Label="Password" @bind-Value="_password" InputType="InputType.Password" Required="true" Disabled="_busy" Placeholder="Enter your password" />
+@code {
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="SignIn"
-                       Disabled="@(_busy || string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))"
-                       FullWidth="true">
-                @if (_busy)
-                {
-                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="me-2" />
-                }
-                else
-                {
-                    <MudIcon Icon="@Icons.Material.Filled.Login" Class="me-2" />
-                }
-                <span class="d-none d-sm-inline">Sign in</span>
-            </MudButton>
-        </MudStack>
-    </MudPaper>
-</MudContainer>
+    private string? Email { get; set; }
+    private string? Password { get; set; }
+    private bool RememberMe { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+}

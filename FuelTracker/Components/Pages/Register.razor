@@ -1,0 +1,43 @@
+﻿@page "/register"
+
+<MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="d-flex justify-center">
+    <MudPaper Elevation="25" Class="pa-6 mt-12" Style="width:100%">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h5" Align="Align.Center">Create account</MudText>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+            @if (!string.IsNullOrEmpty(_success))
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">@_success</MudAlert>
+            }
+
+            <MudTextField Label="Email" @bind-Value="_email" Required="true" Disabled="_busy" Placeholder="Enter your email" />
+            <MudTextField Label="Password" @bind-Value="_password" InputType="InputType.Password" Required="true" Disabled="_busy" Placeholder="Enter your password" />
+            <MudTextField Label="Confirm password" @bind-Value="_confirmPassword" InputType="InputType.Password" Required="true" Disabled="_busy" Placeholder="Re-enter your password" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="RegisterUser"
+                       Disabled="@(_busy || string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password) || string.IsNullOrWhiteSpace(_confirmPassword))"
+                       FullWidth="true">
+                @if (_busy)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="me-2" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="me-2" />
+                }
+                <span class="d-none d-sm-inline">Create account</span>
+            </MudButton>
+
+            <MudText Class="mt-2" Align="Align.Center">
+                Already have an account?
+                <MudLink Href="/login">Sign in</MudLink>
+            </MudText>
+        </MudStack>
+    </MudPaper>
+</MudContainer>

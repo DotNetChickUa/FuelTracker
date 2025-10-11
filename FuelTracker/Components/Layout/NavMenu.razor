@@ -6,4 +6,25 @@
         <MudNavLink Href="/security"  Match="NavLinkMatch.Prefix">Security</MudNavLink>
     </MudNavGroup>
     <MudNavLink Href="/about"  Match="NavLinkMatch.Prefix">About</MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="/logout" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Logout" Class="me-2" />
+                Logout
+            </MudNavLink>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="/login" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Login" Class="me-2" />
+                Login
+            </MudNavLink>
+            <MudNavLink Href="/register" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="me-2" />
+                Register
+            </MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
 </MudNavMenu>
