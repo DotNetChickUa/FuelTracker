@@ -127,6 +127,7 @@
 
     private async Task OnVehicleChanged(Guid arg)
     {
+        _selectedVehicleId = arg;
         await LoadVehiclesAndStats();
     }
 
