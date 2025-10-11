@@ -1,0 +1,7 @@
+﻿services:
+  fueltracker:
+    image: fueltracker
+    build:
+      context: .
+      dockerfile: FuelTracker/Dockerfile
+
