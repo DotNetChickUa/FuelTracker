@@ -1,0 +1,100 @@
+﻿@using MudBlazor
+@using FuelTracker.Infrastructure.Database
+@using FuelTracker.Infrastructure.Database.Entities
+@using Microsoft.EntityFrameworkCore
+@inject FuelTrackerDbContext Db
+
+<CascadingValue Value="this">
+    <MudDialog>
+        <DialogContent>
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">@(_editing?.Id == Guid.Empty ? "Add Vehicle" : "Edit Vehicle")</MudText>
+                <MudTextField Label="Name" @bind-Value="_editing!.Name" Required="true" />
+                <MudTextField Label="Make" @bind-Value="_editing!.Make" />
+                <MudTextField Label="Model" @bind-Value="_editing!.Model" />
+                <MudNumericField TValue="int" Label="Year" @bind-Value="_editing!.Year" />
+                <MudTextField Label="Fuel Type" @bind-Value="_editing!.FuelType" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="@string.IsNullOrWhiteSpace(_editing?.Name)">Save</MudButton>
+        </DialogActions>
+    </MudDialog>
+</CascadingValue>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public Vehicle? Vehicle { get; set; }
+
+    private Vehicle? _editing;
+
+    protected override void OnInitialized()
+    {
+        if (Vehicle is null)
+        {
+            _editing = new Vehicle
+            {
+                Id = Guid.Empty,
+                UserId = UserId,
+                Name = string.Empty
+            };
+        }
+        else
+        {
+            _editing = new Vehicle
+            {
+                Id = Vehicle.Id,
+                UserId = Vehicle.UserId,
+                Name = Vehicle.Name,
+                Make = Vehicle.Make,
+                Model = Vehicle.Model,
+                Year = Vehicle.Year,
+                FuelType = Vehicle.FuelType
+            };
+        }
+    }
+
+    private async Task Save()
+    {
+        if (_editing == null) return;
+
+        if (_editing.Id == Guid.Empty)
+        {
+            var toAdd = new Vehicle
+            {
+                UserId = UserId,
+                Name = _editing.Name.Trim(),
+                Make = string.IsNullOrWhiteSpace(_editing.Make) ? null : _editing.Make!.Trim(),
+                Model = string.IsNullOrWhiteSpace(_editing.Model) ? null : _editing.Model!.Trim(),
+                Year = _editing.Year,
+                FuelType = string.IsNullOrWhiteSpace(_editing.FuelType) ? null : _editing.FuelType!.Trim()
+            };
+            await Db.AddAsync(toAdd);
+        }
+        else
+        {
+            var existing = await Db.Set<Vehicle>().FirstOrDefaultAsync(v => v.Id == _editing.Id && v.UserId == UserId);
+            if (existing is null)
+            {
+                MudDialog?.Cancel();
+                return;
+            }
+            existing.Name = _editing.Name.Trim();
+            existing.Make = string.IsNullOrWhiteSpace(_editing.Make) ? null : _editing.Make!.Trim();
+            existing.Model = string.IsNullOrWhiteSpace(_editing.Model) ? null : _editing.Model!.Trim();
+            existing.Year = _editing.Year;
+            existing.FuelType = string.IsNullOrWhiteSpace(_editing.FuelType) ? null : _editing.FuelType!.Trim();
+        }
+
+        await Db.SaveChangesAsync();
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

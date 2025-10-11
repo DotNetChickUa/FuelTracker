@@ -9,12 +9,22 @@
     </NotAuthorized>
     <Authorized>
         <MudStack Spacing="2" Class="mt-4">
-            <MudText Typo="Typo.h5">Demo Stats (view-only conversions)</MudText>
+            <MudText Typo="Typo.h5">Statistics</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudText>Select vehicle:</MudText>
+                <MudSelect T="Guid" Value="_selectedVehicleId" ValueChanged="OnVehicleChanged" Dense="true" Class="w-25">
+                    <MudSelectItem Value="Guid.Empty">All vehicles</MudSelectItem>
+                    @foreach (var v in _vehicles)
+                    {
+                        <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
             @* Canonical stored values *@
             @{
-                double distanceKm = 500; // canonical demo
-                double volumeL = 35;
-                double totalCost = 70;
+                double distanceKm = _distanceKm;
+                double volumeL = _volumeL;
+                double totalCost = _totalCost;
                 var s = Units.Settings;
                 var consL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(distanceKm, volumeL);
                 var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(consL100, s.DistanceUnit, s.VolumeUnit);
@@ -40,13 +50,66 @@
     </Authorized>
 </AuthorizeView>
 
+@using FuelTracker.Infrastructure.Database
+@using FuelTracker.Infrastructure.Database.Entities
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
 @code {
     [Microsoft.AspNetCore.Components.Inject]
     private FuelTracker.Application.Units.IUnitService Units { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    private FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
 
-    protected override void OnInitialized()
+    private List<Vehicle> _vehicles = new();
+    private Guid _selectedVehicleId = Guid.Empty;
+    private Guid _userId;
+
+    private double _distanceKm;
+    private double _volumeL;
+    private double _totalCost;
+
+    protected override async Task OnInitializedAsync()
     {
         Units.OnChange += StateHasChanged;
+        var auth = await (AuthTask ?? throw new InvalidOperationException()).ConfigureAwait(false);
+        var idStr = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(idStr, out _userId))
+        {
+            await LoadVehiclesAndStats();
+        }
+    }
+
+    private async Task LoadVehiclesAndStats()
+    {
+        _vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).OrderBy(v => v.Name).ToListAsync();
+
+        var query = Db.Set<FuelEntry>().Where(e => e.UserId == _userId);
+        if (_selectedVehicleId != Guid.Empty)
+        {
+            query = query.Where(e => e.VehicleId == _selectedVehicleId);
+        }
+        var entries = await query.ToListAsync();
+        if (entries.Count > 0)
+        {
+            _distanceKm = entries.Sum(e => e.DistanceKm);
+            _volumeL = entries.Sum(e => e.VolumeL);
+            _totalCost = entries.Sum(e => (double)e.TotalCost);
+        }
+        else
+        {
+            // demo fallback
+            _distanceKm = 500;
+            _volumeL = 35;
+            _totalCost = 70;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnVehicleChanged(Guid arg)
+    {
+        await LoadVehiclesAndStats();
     }
 
     public void Dispose()
