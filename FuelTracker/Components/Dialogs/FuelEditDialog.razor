@@ -3,6 +3,7 @@
 @using FuelTracker.Infrastructure.Database.Entities
 @using Microsoft.EntityFrameworkCore
 @inject FuelTrackerDbContext Db
+@inject FuelTracker.Application.Units.IUnitService Units
 
 <CascadingValue Value="this">
     <MudDialog>
@@ -21,7 +22,13 @@
                 <MudTextField Label="Fuel Brand" @bind-Value="_editing!.Brand" />
                 <MudTextField Label="Fuel Grade" @bind-Value="_editing!.Grade" />
                 <MudNumericField TValue="double" Label="Quantity (L)" @bind-Value="_editing!.VolumeL" Required="true" Min="0.0001" Adornment="Adornment.End" AdornmentText="L" />
-                <MudNumericField TValue="decimal" Label="Total Amount" @bind-Value="_editing!.TotalCost" Required="true" Min="0.01m" Adornment="Adornment.End" AdornmentText="@Currency" />
+                <MudNumericField TValue="decimal" Label="Total Amount" @bind-Value="_editing!.TotalCost" Required="true" Min="0.01m" Adornment="Adornment.End" AdornmentText="@CurrencyDisplay" />
+                @{
+                    var hasQty = _editing!.VolumeL > 0.0;
+                    var unitPrice = hasQty ? _editing!.TotalCost / (decimal)_editing!.VolumeL : 0m;
+                }
+                <MudText Typo="Typo.caption">Unit price: @(hasQty ? unitPrice.ToString("0.00") : "-") @($"{CurrencyDisplay}/L")</MudText>
+
                 <MudTextField Label="Notes" @bind-Value="_editing!.Notes" Lines="3" MaxLength="500" />
                 @if (!string.IsNullOrEmpty(_error))
                 {
@@ -47,6 +54,8 @@
     private FuelEntry? _editing;
     private DateTime? _date;
     private string? _error;
+
+    private string CurrencyDisplay => string.IsNullOrWhiteSpace(Currency) ? Units.Settings.CurrencyIsoCode : Currency;
 
     protected override void OnInitialized()
     {
@@ -129,16 +138,36 @@
         // For odometer sequence constraints, check adjacent entries for this vehicle
         var siblings = await Db.Set<FuelEntry>()
             .Where(e => e.UserId == UserId && e.VehicleId == _editing.VehicleId && e.Id != _editing.Id)
-            .OrderBy(e => e.Date)
-            .ThenBy(e => e.Id)
             .ToListAsync();
 
-        // When inserting among others, enforce that odometer is strictly greater than previous entry's odometer
-        // and less than next entry's odometer
-        var idx = siblings.FindIndex(e => e.Date > _date!.Value || (e.Date == _date!.Value && e.Id.CompareTo(_editing.Id) > 0));
-        var prev = idx <= 0 ? siblings.LastOrDefault(s => s.Date <= _date) : siblings[idx - 1];
-        var next = idx == -1 ? null : siblings.ElementAtOrDefault(idx);
+        // Normalize target date to date-only (UTC) for comparisons and storage
+        var targetUtcDate = DateTime.SpecifyKind(_date!.Value.Date, DateTimeKind.Utc);
 
+        // Order siblings chronologically with a stable tie-breaker by Id
+        var ordered = siblings
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.Id)
+            .ToList();
+
+        // Find insertion point among ordered entries based on target date and Id
+        var insertIdx = ordered.FindIndex(e => e.Date > targetUtcDate || (e.Date == targetUtcDate && e.Id.CompareTo(_editing.Id) > 0));
+
+        // Determine previous and next entries relative to the insertion point
+        FuelEntry? prev = null;
+        FuelEntry? next = null;
+
+        if (insertIdx == -1)
+        {
+            prev = ordered.LastOrDefault();
+            next = null;
+        }
+        else
+        {
+            next = ordered.ElementAtOrDefault(insertIdx);
+            prev = insertIdx > 0 ? ordered[insertIdx - 1] : null;
+        }
+
+        // Enforce strict monotonic odometer for this vehicle
         if (prev is not null && _editing.OdometerKm <= prev.OdometerKm)
         {
             _error = "Odometer must be greater than the previous entry for this vehicle.";
@@ -156,7 +185,7 @@
             {
                 UserId = UserId,
                 VehicleId = _editing.VehicleId,
-                Date = _date.Value,
+                Date = targetUtcDate,
                 OdometerKm = _editing.OdometerKm,
                 VolumeL = _editing.VolumeL,
                 TotalCost = _editing.TotalCost,
@@ -176,7 +205,7 @@
                 return;
             }
             existing.VehicleId = _editing.VehicleId; // Not changeable in UI when editing, but keep for completeness
-            existing.Date = _date.Value;
+            existing.Date = targetUtcDate;
             existing.OdometerKm = _editing.OdometerKm;
             existing.VolumeL = _editing.VolumeL;
             existing.TotalCost = _editing.TotalCost;

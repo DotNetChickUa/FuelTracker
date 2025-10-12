@@ -3,7 +3,15 @@
 
 <PageTitle>Logout</PageTitle>
 
-
-<form method="post" action="api/account/logout">
+<form id="logoutForm" method="post" action="api/account/logout">
     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Logout</MudButton>
 </form>
+
+<script>
+    (function () {
+        try {
+            var f = document.getElementById('logoutForm');
+            if (f) { f.submit(); }
+        } catch (e) { /* ignore */ }
+    })();
+</script>

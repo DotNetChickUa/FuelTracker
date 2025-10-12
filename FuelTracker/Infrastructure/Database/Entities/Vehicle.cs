@@ -1,5 +1,9 @@
-﻿namespace FuelTracker.Infrastructure.Database.Entities;
+﻿using Microsoft.EntityFrameworkCore;
 
+namespace FuelTracker.Infrastructure.Database.Entities;
+
+[Index(nameof(UserId))]
+[Index(nameof(UserId), nameof(Name))]
 public class Vehicle
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();

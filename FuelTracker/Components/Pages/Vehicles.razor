@@ -121,7 +121,7 @@
     private async Task Delete(Vehicle v)
     {
         // Prevent deleting if there are fuel entries
-        var hasEntries = await Db.Set<FuelEntry>().AnyAsync(e => e.VehicleId == v.Id);
+        var hasEntries = await Db.Set<FuelEntry>().AnyAsync(e => e.VehicleId == v.Id && e.UserId == _userId);
         if (hasEntries)
         {
             Snackbar.Add("Delete Fuel Entries first", Severity.Error);

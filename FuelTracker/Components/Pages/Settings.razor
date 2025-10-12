@@ -2,41 +2,79 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject FuelTracker.Application.Units.IUnitService Units
+@inject FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db
+@using FuelTracker.Infrastructure.Database.Entities
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
 
-<MudContainer MaxWidth="MaxWidth.Small">
-    <MudPaper Class="pa-6 mt-6">
-        <MudStack Spacing="2">
-            <MudText Typo="Typo.h5">Profile</MudText>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <MudContainer MaxWidth="MaxWidth.Medium">
+                <MudPaper Class="pa-6 mt-6">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h5">Profile & Settings</MudText>
 
-            <AuthorizeView>
-                Hello @context.User.Identity?.Name!
-            </AuthorizeView>
-            
-            <MudTextField Label="Currency (ISO)" @bind-Value="_model.CurrencyIsoCode" />
+                        <MudTextField Label="Currency (ISO)" @bind-Value="_model.CurrencyIsoCode" />
 
-            <MudSelect Label="Distance Unit" T="FuelTracker.Application.Units.DistanceUnit" @bind-Value="_model.DistanceUnit">
-                <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Kilometer">Kilometers (km)</MudSelectItem>
-                <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Mile">Miles (mi)</MudSelectItem>
-            </MudSelect>
+                        <MudSelect Label="Distance Unit" T="FuelTracker.Application.Units.DistanceUnit" @bind-Value="_model.DistanceUnit">
+                            <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Kilometer">Kilometers (km)</MudSelectItem>
+                            <MudSelectItem Value="FuelTracker.Application.Units.DistanceUnit.Mile">Miles (mi)</MudSelectItem>
+                        </MudSelect>
 
-            <MudSelect Label="Volume Unit" T="FuelTracker.Application.Units.VolumeUnit" @bind-Value="_model.VolumeUnit">
-                <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.Liter">Liters (L)</MudSelectItem>
-                <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.GallonUS">Gallons (US gal)</MudSelectItem>
-            </MudSelect>
+                        <MudSelect Label="Volume Unit" T="FuelTracker.Application.Units.VolumeUnit" @bind-Value="_model.VolumeUnit">
+                            <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.Liter">Liters (L)</MudSelectItem>
+                            <MudSelectItem Value="FuelTracker.Application.Units.VolumeUnit.GallonUS">Gallons (US gal)</MudSelectItem>
+                        </MudSelect>
 
-            <MudTextField Label="Time Zone" @bind-Value="_model.TimeZone" />
+                        <MudTextField Label="Time Zone" @bind-Value="_model.TimeZone" />
 
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
-        </MudStack>
-    </MudPaper>
-</MudContainer>
+                        <MudStack Row="true" Spacing="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ExportCsv">Export CSV</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteAccount">Delete Account</MudButton>
+                        </MudStack>
+
+                        @if (!string.IsNullOrEmpty(_csvText))
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-4">CSV Export</MudText>
+                            <MudText Typo="Typo.caption">Copy and save as .csv</MudText>
+                            <MudTextField Lines="10" FullWidth="true" @bind-Value="_csvText" ReadOnly="true" />
+                        }
+                        @if (!string.IsNullOrEmpty(_error))
+                        {
+                            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                        }
+                        @if (!string.IsNullOrEmpty(_success))
+                        {
+                            <MudAlert Severity="Severity.Success">@_success</MudAlert>
+                        }
+                    </MudStack>
+                </MudPaper>
+            </MudContainer>
+        </Authorized>
+        <NotAuthorized>
+            <MudText>You must be signed in.</MudText>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
 
 @code {
-    private FuelTracker.Application.Units.UnitSettings _model = new();
+    [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
+    private Guid _userId;
 
-    protected override void OnInitialized()
+    private FuelTracker.Application.Units.UnitSettings _model = new();
+    private string? _csvText;
+    private string? _error;
+    private string? _success;
+
+    protected override async Task OnInitializedAsync()
     {
-        // clone current settings
+        var auth = await (AuthTask ?? throw new InvalidOperationException());
+        var idStr = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(idStr, out _userId)) return;
+
         _model = new FuelTracker.Application.Units.UnitSettings
         {
             CurrencyIsoCode = Units.Settings.CurrencyIsoCode,
@@ -49,5 +87,55 @@
     private void Save()
     {
         Units.Update(_model);
+        _success = "Settings saved.";
+        _error = null;
     }
+
+    private async Task ExportCsv()
+    {
+        _error = null; _success = null;
+        var vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).OrderBy(v => v.Name).ToListAsync();
+        var entries = await Db.Set<FuelEntry>().Where(e => e.UserId == _userId).OrderBy(e => e.VehicleId).ThenBy(e => e.Date).ToListAsync();
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Vehicles");
+        sb.AppendLine("Id,Name,Make,Model,Year,FuelType");
+        foreach (var v in vehicles)
+        {
+            sb.AppendLine($"{v.Id},{Escape(v.Name)},{Escape(v.Make)},{Escape(v.Model)},{v.Year},{Escape(v.FuelType)}");
+        }
+        sb.AppendLine();
+        sb.AppendLine("FuelEntries");
+        sb.AppendLine("Id,VehicleId,DateUtc,OdometerKm,VolumeL,TotalCost,Station,Brand,Grade,Notes");
+        foreach (var e in entries)
+        {
+            sb.AppendLine($"{e.Id},{e.VehicleId},{e.Date:O},{e.OdometerKm:0},{e.VolumeL:0.##},{e.TotalCost:0.00},{Escape(e.Station)},{Escape(e.Brand)},{Escape(e.Grade)},{Escape(e.Notes)}");
+        }
+
+        _csvText = sb.ToString();
+    }
+
+    private async Task DeleteAccount()
+    {
+        _error = null; _success = null;
+
+        // Remove user's data
+        var entries = await Db.Set<FuelEntry>().Where(e => e.UserId == _userId).ToListAsync();
+        Db.RemoveRange(entries);
+
+        var vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).ToListAsync();
+        Db.RemoveRange(vehicles);
+
+        var user = await Db.Set<User>().FirstOrDefaultAsync(u => u.Id == _userId);
+        if (user is not null)
+            Db.Remove(user);
+
+        await Db.SaveChangesAsync();
+
+        // Redirect to logout to invalidate session
+        Nav.NavigateTo("/logout", forceLoad: true);
+    }
+
+    private static string Escape(string? v)
+        => string.IsNullOrEmpty(v) ? "" : "\"" + v.Replace("\"", "\"\"") + "\"";
 }
