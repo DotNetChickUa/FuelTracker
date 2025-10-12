@@ -18,8 +18,17 @@
                         <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
                     }
                 </MudSelect>
-                <MudText class="ml-6">Rolling window (days):</MudText>
-                <MudNumericField T="int" Dense="true" Min="1" Max="365" Immediate="true" Value="_rollingDays" ValueChanged="OnRollingDaysChanged" Class="w-15" />
+                <MudText class="ml-6">Period:</MudText>
+                <MudSelect T="PeriodOption" Value="_period" ValueChanged="OnPeriodChanged" Dense="true" Class="w-20">
+                    <MudSelectItem Value="PeriodOption.Last30">Last 30 days</MudSelectItem>
+                    <MudSelectItem Value="PeriodOption.Last90">Last 90 days</MudSelectItem>
+                    <MudSelectItem Value="PeriodOption.YearToDate">Year-to-date</MudSelectItem>
+                    <MudSelectItem Value="PeriodOption.Custom">Custom range</MudSelectItem>
+                </MudSelect>
+                @if (_period == PeriodOption.Custom)
+                {
+                    <MudDateRangePicker Dense="true" @bind-DateRange="_customRange" DateFormat="yyyy-MM-dd" PickerClosed ="OnCustomRangeClosed" />
+                }
             </MudStack>
 
             @* Overall aggregates (all-time for current selection) *@
@@ -64,12 +73,58 @@
 
             <MudPaper Class="pa-4">
                 <MudStack>
-                    <MudText Typo="Typo.subtitle1">Rolling window (@_rollingDays days)</MudText>
-                    <MudText>Average cost per volume: @rollCPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
-                    <MudText>Average consumption: @rollConsView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
-                    <MudText>Average distance per day: @rollAvgDistPerDayView.ToString("0") @distUnitShort</MudText>
-                    <MudText>Average cost per distance: @rollCPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
-                    <MudText>Total spend: @FormatCurrency(_rollingTotalCost) | Total distance: @rollingDistanceView.ToString("0") @distUnitShort</MudText>
+                    <MudText Typo="Typo.subtitle1">Overview Dashboard (Selected period)</MudText>
+                    @if (!_periodHasData)
+                    {
+                        <MudText Typo="Typo.caption">No data in the selected range. Try a different period or vehicle.</MudText>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" Spacing="6">
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Rolling avg cost per volume</MudText>
+                                <MudText Typo="Typo.h6">@_periodAvgCostPerVolumeView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
+                            </MudStack>
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Rolling avg consumption</MudText>
+                                <MudText Typo="Typo.h6">@_periodAvgConsumptionView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                            </MudStack>
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Total spend</MudText>
+                                <MudText Typo="Typo.h6">@FormatCurrency(_periodTotalCost)</MudText>
+                            </MudStack>
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Total distance</MudText>
+                                <MudText Typo="Typo.h6">@ConvertDistance(_periodDistanceKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
+                            </MudStack>
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Avg cost per distance</MudText>
+                                <MudText Typo="Typo.h6">@_periodAvgCostPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
+                            </MudStack>
+                            <MudStack>
+                                <MudText Typo="Typo.overline">Avg distance/day</MudText>
+                                <MudText Typo="Typo.h6">@ConvertDistance(_periodAvgDistancePerDayKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
+                            </MudStack>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudText Typo="Typo.subtitle1">Trends (Selected period)</MudText>
+                    @if (!_periodHasData)
+                    {
+                        <MudText Typo="Typo.caption">No data to chart for the selected range.</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.subtitle2">Cost per liter over time</MudText>
+                        <MudChart ChartType="ChartType.Line" InputLabels="_chartLabels" ChartSeries="_unitPriceSeries" />
+                        <MudDivider Class="my-4" />
+                        <MudText Typo="Typo.subtitle2">Consumption over time</MudText>
+                        <MudChart  ChartType="ChartType.Line" InputLabels="_chartLabels" ChartSeries="_consumptionSeries" />
+                    }
                 </MudStack>
             </MudPaper>
 
@@ -120,7 +175,7 @@
 
             <MudStack Row="true" Spacing="2">
                 <MudPaper Class="pa-4" Style="flex:1;">
-                    <MudText Typo="Typo.subtitle1">Per brand (all-time)</MudText>
+                    <MudText Typo="Typo.subtitle1">Per brand (selected period)</MudText>
                     <MudTable Items="_brandAggs" Dense="true" Hover="true" Bordered="true">
                         <HeaderContent>
                             <MudTh>Brand</MudTh>
@@ -145,7 +200,7 @@
                 </MudPaper>
 
                 <MudPaper Class="pa-4" Style="flex:1;">
-                    <MudText Typo="Typo.subtitle1">Per grade (all-time)</MudText>
+                    <MudText Typo="Typo.subtitle1">Per grade (selected period)</MudText>
                     <MudTable Items="_gradeAggs" Dense="true" Hover="true" Bordered="true">
                         <HeaderContent>
                             <MudTh>Grade</MudTh>
@@ -199,12 +254,32 @@
     // Per-fill list
     private List<PerFillRow> _perFill = new();
 
-    // Rolling window config and aggregates
+    // Period selection
+    private enum PeriodOption { Last30, Last90, YearToDate, Custom }
+    private PeriodOption _period = PeriodOption.Last30;
+    private MudBlazor.DateRange? _customRange;
+
+    // Selected period aggregates
+    private double _periodDistanceKm;
+    private double _periodVolumeL;
+    private decimal _periodTotalCost;
+    private double _periodAvgDistancePerDayKm;
+    private bool _periodHasData;
+    private double _periodAvgConsumptionView;
+    private decimal _periodAvgCostPerKmView;
+    private decimal _periodAvgCostPerVolumeView;
+
+    // Rolling window config and aggregates (kept for all-time and legacy display calculations)
     private int _rollingDays = 30;
     private double _rollingDistanceKm;
     private double _rollingVolumeL;
     private decimal _rollingTotalCost;
     private double _rollingAvgDistancePerDayKm;
+
+    // Charts
+    private string[] _chartLabels = Array.Empty<string>();
+    private List<ChartSeries> _unitPriceSeries = [];
+    private List<ChartSeries> _consumptionSeries = [];
 
     // Per brand/grade aggregates (all-time, current selection)
     private List<GroupAggregate> _brandAggs = new();
@@ -248,6 +323,16 @@
         _rollingAvgDistancePerDayKm = 0;
         _brandAggs.Clear();
         _gradeAggs.Clear();
+
+        // Reset period
+        _periodDistanceKm = 0;
+        _periodVolumeL = 0;
+        _periodTotalCost = 0;
+        _periodAvgDistancePerDayKm = 0;
+        _periodHasData = false;
+        _chartLabels = Array.Empty<string>();
+        _unitPriceSeries = [];
+        _consumptionSeries = [];
 
         if (entries.Count > 0)
         {
@@ -299,6 +384,101 @@
                 lastDate = e.Date;
             }
 
+            // Determine selected period range in UTC (inclusive start, inclusive end day)
+            DateTime utcToday = DateTime.UtcNow.Date;
+            DateTime startUtc;
+            DateTime endUtc = utcToday.AddDays(1).AddTicks(-1); // include today
+            switch (_period)
+            {
+                case PeriodOption.Last30:
+                    startUtc = utcToday.AddDays(-30);
+                    break;
+                case PeriodOption.Last90:
+                    startUtc = utcToday.AddDays(-90);
+                    break;
+                case PeriodOption.YearToDate:
+                    startUtc = new DateTime(utcToday.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    break;
+                case PeriodOption.Custom:
+                    if (_customRange?.Start == null || _customRange?.End == null)
+                    {
+                        // If custom not set, default to last 30
+                        startUtc = utcToday.AddDays(-30);
+                    }
+                    else
+                    {
+                        // Assume DateRange values are local; convert to UTC date boundaries
+                        var startLocal = _customRange.Start.Value.Date;
+                        var endLocal = _customRange.End.Value.Date;
+                        startUtc = DateTime.SpecifyKind(startLocal, DateTimeKind.Local).ToUniversalTime().Date;
+                        var endUtcDay = DateTime.SpecifyKind(endLocal, DateTimeKind.Local).ToUniversalTime().Date;
+                        endUtc = endUtcDay.AddDays(1).AddTicks(-1);
+                    }
+                    break;
+                default:
+                    startUtc = utcToday.AddDays(-30);
+                    break;
+            }
+
+            // Period entries and segments
+            var periodEntries = entries.Where(e => e.Date >= startUtc && e.Date <= endUtc).ToList();
+            var periodPerFill = _perFill.Where(r => r.Date >= startUtc && r.Date <= endUtc).ToList();
+
+            _periodHasData = periodEntries.Count > 0 && (periodPerFill.Count > 0 || periodEntries.Any());
+
+            _periodDistanceKm = periodPerFill.Sum(r => r.DistanceSinceLastKm);
+            _periodVolumeL = periodEntries.Sum(e => e.VolumeL);
+            _periodTotalCost = periodEntries.Sum(e => e.TotalCost);
+            int daySpan = Math.Max(1, (int)Math.Ceiling((endUtc - startUtc).TotalDays));
+            _periodAvgDistancePerDayKm = _periodDistanceKm / daySpan;
+
+            // Compute period display metrics
+            var s2 = Units.Settings;
+            var periodConsL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(_periodDistanceKm, _periodVolumeL);
+            _periodAvgConsumptionView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(periodConsL100, s2.DistanceUnit, s2.VolumeUnit);
+            var periodCPerKm = FuelTracker.Application.Units.UnitConverter.CostPerKm(_periodTotalCost, _periodDistanceKm);
+            _periodAvgCostPerKmView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(periodCPerKm, s2.DistanceUnit);
+            var periodCPerVol = FuelTracker.Application.Units.UnitConverter.CostPerLiter(_periodTotalCost, _periodVolumeL);
+            _periodAvgCostPerVolumeView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(periodCPerVol, s2.VolumeUnit);
+
+            // Build charts
+            if (_periodHasData)
+            {
+                // Labels by date (grouped by day)
+                var ordered = periodEntries.OrderBy(e => e.Date).ToList();
+                var labelDates = ordered.Select(e => e.Date.ToLocalTime().Date).Distinct().OrderBy(d => d).ToList();
+                _chartLabels = labelDates.Select(d => d.ToString("yyyy-MM-dd")).ToArray();
+
+                // Cost per liter series: use average unit price per day
+                var dayToUnitPrices = labelDates.ToDictionary(d => d, d => new List<double>());
+                foreach (var e in periodEntries)
+                {
+                    if (e.VolumeL > 0)
+                    {
+                        var d = e.Date.ToLocalTime().Date;
+                        dayToUnitPrices[d].Add((double)((decimal)e.TotalCost / (decimal)e.VolumeL));
+                    }
+                }
+                var unitPriceValues = labelDates.Select(d => dayToUnitPrices[d].Count == 0 ? 0.0 : Math.Round(dayToUnitPrices[d].Average(), _priceDecimals)).ToArray();
+                _unitPriceSeries = [new MudBlazor.ChartSeries { Name = "Cost per L", Data = unitPriceValues }];
+
+                // Consumption series: per-fill segments mapped to their fill date (using segment's date)
+                var s = Units.Settings;
+                var consPerDay = labelDates.ToDictionary(d => d, d => new List<double>());
+                foreach (var seg in periodPerFill)
+                {
+                    if (seg.DistanceSinceLastKm > 0 && seg.VolumeL > 0)
+                    {
+                        var l100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(seg.DistanceSinceLastKm, seg.VolumeL);
+                        var view = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(l100, s.DistanceUnit, s.VolumeUnit);
+                        var d = seg.Date.ToLocalTime().Date;
+                        consPerDay[d].Add(view);
+                    }
+                }
+                var consValues = labelDates.Select(d => consPerDay[d].Count == 0 ? 0.0 : consPerDay[d].Average()).ToArray();
+                _consumptionSeries = [ new MudBlazor.ChartSeries { Name = "Consumption", Data = consValues } ];
+            }
+
             // Rolling window aggregates (only per-fill segments with both endpoints in window)
             var windowStartUtc = DateTime.UtcNow.Date.AddDays(-_rollingDays);
             var windowPerFill = _perFill.Where(r => r.Date >= windowStartUtc).ToList();
@@ -308,9 +488,9 @@
             _rollingTotalCost = entries.Where(e => e.Date >= windowStartUtc).Sum(e => e.TotalCost);
             _rollingAvgDistancePerDayKm = _rollingDays > 0 ? (_rollingDistanceKm / _rollingDays) : 0;
 
-            // Per brand and per grade (all-time, based on per-fill segments)
-            _brandAggs = BuildGroupAggregates(_perFill.GroupBy(r => r.Brand));
-            _gradeAggs = BuildGroupAggregates(_perFill.GroupBy(r => r.Grade));
+            // Per brand and per grade (selected period, based on per-fill segments)
+            _brandAggs = BuildGroupAggregates(periodPerFill.GroupBy(r => r.Brand));
+            _gradeAggs = BuildGroupAggregates(periodPerFill.GroupBy(r => r.Grade));
         }
         else
         {
@@ -370,6 +550,23 @@
     {
         _rollingDays = Math.Clamp(d, 1, 365);
         await LoadVehiclesAndStats();
+    }
+
+    private async Task OnPeriodChanged(PeriodOption option)
+    {
+        _period = option;
+        // Reset custom range if switching away
+        if (_period != PeriodOption.Custom)
+            _customRange = null;
+        await LoadVehiclesAndStats();
+    }
+
+    private async Task OnCustomRangeClosed()
+    {
+        if (_period == PeriodOption.Custom)
+        {
+            await LoadVehiclesAndStats();
+        }
     }
 
     private static double ConvertDistance(double km, FuelTracker.Application.Units.DistanceUnit unit)

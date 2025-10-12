@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db
 @inject MudBlazor.IDialogService DialogService
+@inject ISnackbar Snackbar
 @using FuelTracker.Infrastructure.Database.Entities
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -123,7 +124,7 @@
         var hasEntries = await Db.Set<FuelEntry>().AnyAsync(e => e.VehicleId == v.Id);
         if (hasEntries)
         {
-            // Show a simple snackbar replacement: ignore delete for now or you can replace with MudDialog confirm
+            Snackbar.Add("Delete Fuel Entries first", Severity.Error);
             return;
         }
         Db.Remove(v);
