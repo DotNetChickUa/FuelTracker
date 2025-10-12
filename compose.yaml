@@ -1,7 +1,9 @@
-﻿services:
+services:
   fueltracker:
     image: fueltracker
     build:
       context: .
       dockerfile: FuelTracker/Dockerfile
+    ports:
+      - "8080:8080"
 
