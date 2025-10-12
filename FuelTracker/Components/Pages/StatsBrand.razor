@@ -1,242 +1,148 @@
 ﻿@page "/stats/brand"
-@using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db
+
+<PageTitle>Stats Brand</PageTitle>
+
+<MudStack Spacing="2" Class="mt-4">
+    <MudText Typo="Typo.h5">Statistics</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudText>Select vehicle:</MudText>
+        <MudSelect T="Guid" Value="_selectedVehicleId" ValueChanged="OnVehicleChanged" Dense="true" Class="w-25">
+            <MudSelectItem Value="Guid.Empty">All vehicles</MudSelectItem>
+            @foreach (var v in _vehicles)
+            {
+                <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudText class="ml-6">Period:</MudText>
+        <MudSelect T="PeriodOption" Value="_period" ValueChanged="OnPeriodChanged" Dense="true" Class="w-20">
+            <MudSelectItem Value="PeriodOption.Last30">Last 30 days</MudSelectItem>
+            <MudSelectItem Value="PeriodOption.Last90">Last 90 days</MudSelectItem>
+            <MudSelectItem Value="PeriodOption.YearToDate">Year-to-date</MudSelectItem>
+            <MudSelectItem Value="PeriodOption.Custom">Custom range</MudSelectItem>
+        </MudSelect>
+        @if (_period == PeriodOption.Custom)
+        {
+            <MudDateRangePicker Dense="true" @bind-DateRange="_customRange" DateFormat="yyyy-MM-dd"
+                                PickerClosed="OnCustomRangeClosed"/>
+        }
+    </MudStack>
+
+    @* Overall aggregates (all-time for current selection) *@
+    @{
+        double distanceKm = _distanceKm;
+        double volumeL = _volumeL;
+        decimal totalCost = _totalCost;
+        var s = Units.Settings;
+        var consL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(distanceKm, volumeL);
+        var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(consL100, s.DistanceUnit, s.VolumeUnit);
+        var dpv = FuelTracker.Application.Units.UnitConverter.DistancePerLiter(distanceKm, volumeL);
+        var dpvView = FuelTracker.Application.Units.UnitConverter.ConvertDistancePerVolume(dpv, s.DistanceUnit, s.VolumeUnit);
+        var cPerKm = FuelTracker.Application.Units.UnitConverter.CostPerKm(totalCost, distanceKm);
+        var cPerVol = FuelTracker.Application.Units.UnitConverter.CostPerLiter(totalCost, volumeL);
+        var cPerKmView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(cPerKm, s.DistanceUnit);
+        var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(cPerVol, s.VolumeUnit);
+
+        // Rolling window conversions
+        var rollConsL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(_rollingDistanceKm, _rollingVolumeL);
+        var rollConsView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(rollConsL100, s.DistanceUnit, s.VolumeUnit);
+        var rollCPerKm = FuelTracker.Application.Units.UnitConverter.CostPerKm(_rollingTotalCost, _rollingDistanceKm);
+        var rollCPerKmView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(rollCPerKm, s.DistanceUnit);
+        var rollCPerVol = FuelTracker.Application.Units.UnitConverter.CostPerLiter(_rollingTotalCost, _rollingVolumeL);
+        var rollCPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(rollCPerVol, s.VolumeUnit);
+
+        string distUnitShort = s.DistanceUnit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? "km" : "mi";
+        double rollAvgDistPerDayView = ConvertDistance(_rollingAvgDistancePerDayKm, s.DistanceUnit);
+        double totalDistanceView = ConvertDistance(_distanceKm, s.DistanceUnit);
+        double rollingDistanceView = ConvertDistance(_rollingDistanceKm, s.DistanceUnit);
+    }
+
+    <MudStack Row="true" Spacing="2">
+        <MudPaper Class="pa-4" Style="flex:1;">
+            <MudText Typo="Typo.subtitle1">Per brand (selected period)</MudText>
+            <MudTable Items="_brandAggs" Dense="true" Hover="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>Brand</MudTh>
+                    <MudTh>Avg consumption</MudTh>
+                    <MudTh>Avg cost per volume</MudTh>
+                    <MudTh>Avg cost per distance</MudTh>
+                    <MudTh>Fill-ups</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="b">
+                    @{
+                        var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(b.ConsumptionLPer100Km, Units.Settings.DistanceUnit, Units.Settings.VolumeUnit);
+                        var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(b.CostPerLiter, Units.Settings.VolumeUnit);
+                        var cPerDistView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(b.CostPerKm, Units.Settings.DistanceUnit);
+                    }
+                    <MudTd>@(string.IsNullOrWhiteSpace(b.Key) ? "(Unknown)" : b.Key)</MudTd>
+                    <MudTd>@consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudTd>
+                    <MudTd>@cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudTd>
+                    <MudTd>@cPerDistView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudTd>
+                    <MudTd>@b.Count</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Style="flex:1;">
+            <MudText Typo="Typo.subtitle1">Per grade (selected period)</MudText>
+            <MudTable Items="_gradeAggs" Dense="true" Hover="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>Grade</MudTh>
+                    <MudTh>Avg consumption</MudTh>
+                    <MudTh>Avg cost per volume</MudTh>
+                    <MudTh>Avg cost per distance</MudTh>
+                    <MudTh>Fill-ups</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="g">
+                    @{
+                        var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(g.ConsumptionLPer100Km, Units.Settings.DistanceUnit, Units.Settings.VolumeUnit);
+                        var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(g.CostPerLiter, Units.Settings.VolumeUnit);
+                        var cPerDistView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(g.CostPerKm, Units.Settings.DistanceUnit);
+                    }
+                    <MudTd>@(string.IsNullOrWhiteSpace(g.Key) ? "(Unknown)" : g.Key)</MudTd>
+                    <MudTd>@consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudTd>
+                    <MudTd>@cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudTd>
+                    <MudTd>@cPerDistView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudTd>
+                    <MudTd>@g.Count</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    </MudStack>
+
+    <MudText Typo="Typo.caption">Switch units in Settings to toggle between L/100km and MPG. Stored canonical data
+        remains km/L.
+    </MudText>
+</MudStack>
+
+@using FuelTracker.Infrastructure.Database
 @using FuelTracker.Infrastructure.Database.Entities
-@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
-@inject FuelTracker.Application.Units.IUnitService Units
-@using MudBlazor
-
-<CascadingAuthenticationState>
-    <AuthorizeView>
-        <Authorized>
-            <MudContainer MaxWidth="MaxWidth.Large">
-                <MudPaper Class="pa-6 mt-6">
-                    <MudStack Spacing="2">
-                        <MudText Typo="Typo.h5">Brand/Grade Comparison</MudText>
-
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudText>Select vehicle:</MudText>
-                            <MudSelect T="Guid" Value="_vehicle" ValueChanged="OnVehicleChanged" Dense="true" Class="w-25">
-                                <MudSelectItem Value="Guid.Empty">All vehicles</MudSelectItem>
-                                @foreach (var v in _vehicles)
-                                {
-                                    <MudSelectItem Value="v.Id">@v.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudText class="ml-6">Period:</MudText>
-                            <MudSelect T="PeriodOption" Value="_period" ValueChanged="OnPeriodChanged" Dense="true" Class="w-20">
-                                <MudSelectItem Value="PeriodOption.Last30">Last 30 days</MudSelectItem>
-                                <MudSelectItem Value="PeriodOption.Last90">Last 90 days</MudSelectItem>
-                                <MudSelectItem Value="PeriodOption.YearToDate">Year-to-date</MudSelectItem>
-                                <MudSelectItem Value="PeriodOption.Custom">Custom range</MudSelectItem>
-                            </MudSelect>
-                            @if (_period == PeriodOption.Custom)
-                            {
-                                <MudDateRangePicker Dense="true" @bind-DateRange="_customRange" DateFormat="yyyy-MM-dd" PickerClosed="OnCustomRangeClosed" />
-                            }
-                        </MudStack>
-
-                        @if (!_hasData)
-                        {
-                            <MudText Typo="Typo.caption">No data for the selected range.</MudText>
-                        }
-                        else
-                        {
-                            <MudStack Row="true" Spacing="4">
-                                <MudPaper Class="pa-4" Style="flex:1;">
-                                    <MudText Typo="Typo.subtitle1">Per brand (selected period)</MudText>
-                                    <MudTable Items="_brandAggs" Dense="true" Hover="true" Bordered="true">
-                                        <HeaderContent>
-                                            <MudTh>Brand</MudTh>
-                                            <MudTh>Avg cost per volume (@Units.Settings.CurrencyIsoCode/@FuelTracker.Application.Units.UnitConverter.VolumeLabel(Units.Settings.VolumeUnit))</MudTh>
-                                            <MudTh>Avg consumption (@FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit))</MudTh>
-                                            <MudTh>Fill-ups</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate Context="row">
-                                            <MudTd>@row.Key</MudTd>
-                                            <MudTd>@row.AvgCostPerVolumeView.ToString("0.00")</MudTd>
-                                            <MudTd>@row.AvgConsumptionView.ToString("0.0")</MudTd>
-                                            <MudTd>@row.Count</MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
-                                </MudPaper>
-
-                                <MudPaper Class="pa-4" Style="flex:1;">
-                                    <MudText Typo="Typo.subtitle1">Per grade (selected period)</MudText>
-                                    <MudTable Items="_gradeAggs" Dense="true" Hover="true" Bordered="true">
-                                        <HeaderContent>
-                                            <MudTh>Grade</MudTh>
-                                            <MudTh>Avg cost per volume (@Units.Settings.CurrencyIsoCode/@FuelTracker.Application.Units.UnitConverter.VolumeLabel(Units.Settings.VolumeUnit))</MudTh>
-                                            <MudTh>Avg consumption (@FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit))</MudTh>
-                                            <MudTh>Fill-ups</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate Context="row">
-                                            <MudTd>@row.Key</MudTd>
-                                            <MudTd>@row.AvgCostPerVolumeView.ToString("0.00")</MudTd>
-                                            <MudTd>@row.AvgConsumptionView.ToString("0.0")</MudTd>
-                                            <MudTd>@row.Count</MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
-                                </MudPaper>
-                            </MudStack>
-                        }
-                    </MudStack>
-                </MudPaper>
-            </MudContainer>
-        </Authorized>
-        <NotAuthorized>
-            <MudText>You must be signed in.</MudText>
-        </NotAuthorized>
-    </AuthorizeView>
-</CascadingAuthenticationState>
+@using Microsoft.AspNetCore.Components.Authorization
 
 @code {
+
+    [Microsoft.AspNetCore.Components.Inject]
+    private FuelTracker.Application.Units.IUnitService Units { get; set; } = default!;
+
+    [Microsoft.AspNetCore.Components.Inject]
+    private FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db { get; set; } = default!;
+
     [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
 
-    private Guid _userId;
     private List<Vehicle> _vehicles = new();
-    private Guid _vehicle = Guid.Empty;
+    private Guid _selectedVehicleId = Guid.Empty;
+    private Guid _userId;
 
-    private PeriodOption _period = PeriodOption.Last30;
-    private MudBlazor.DateRange _customRange = new(DateTime.UtcNow.Date.AddDays(-30), DateTime.UtcNow.Date);
-    private bool _hasData;
+    // All-time aggregates for current selection
+    private double _distanceKm;
+    private double _volumeL;
+    private decimal _totalCost;
 
-    private List<BrandAgg> _brandAggs = new();
-    private List<BrandAgg> _gradeAggs = new();
+    // Per-fill list
+    private List<PerFillRow> _perFill = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        var auth = await (AuthTask ?? throw new InvalidOperationException());
-        var idStr = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(idStr, out _userId)) return;
-        await LoadAsync();
-    }
-
-    private async Task OnVehicleChanged(Guid id)
-    {
-        _vehicle = id;
-        await LoadAsync();
-    }
-
-    private async Task OnPeriodChanged(PeriodOption p)
-    {
-        _period = p;
-        await LoadAsync();
-    }
-
-    private async Task OnCustomRangeClosed()
-    {
-        if (_period == PeriodOption.Custom)
-            await LoadAsync();
-    }
-
-    private (DateTime from, DateTime to) ResolveRange()
-    {
-        var today = DateTime.UtcNow.Date;
-        return _period switch
-        {
-            PeriodOption.Last30 => (today.AddDays(-30), today),
-            PeriodOption.Last90 => (today.AddDays(-90), today),
-            PeriodOption.YearToDate => (new DateTime(today.Year, 1, 1), today),
-            PeriodOption.Custom => (_customRange.Start?.Date ?? today.AddDays(-30), _customRange.End?.Date ?? today),
-            _ => (today.AddDays(-30), today)
-        };
-    }
-
-    private async Task LoadAsync()
-    {
-        _vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).OrderBy(v => v.Name).ToListAsync();
-
-        var (from, to) = ResolveRange();
-        var baseQuery = Db.Set<FuelEntry>().Where(e => e.UserId == _userId && e.Date >= from && e.Date <= to);
-        if (_vehicle != Guid.Empty) baseQuery = baseQuery.Where(e => e.VehicleId == _vehicle);
-
-        // Load entries and their vehicle groups to compute per-fill distances
-        var list = await baseQuery.AsNoTracking().ToListAsync();
-
-        // To compute distance_since_last, we need sibling entries outside the window too (previous one).
-        // Load previous entries for vehicles to establish the baseline odometer within period.
-        var vehicleIds = list.Select(e => e.VehicleId).Distinct().ToArray();
-        var prevs = await Db.Set<FuelEntry>()
-            .Where(e => e.UserId == _userId && vehicleIds.Contains(e.VehicleId) && e.Date < from)
-            .GroupBy(e => e.VehicleId)
-            .Select(g => g.OrderByDescending(x => x.Date).ThenByDescending(x => x.Id).First())
-            .ToListAsync();
-
-        // Merge prevs with list and compute per vehicle distances
-        var allByVehicle = list.Concat(prevs).GroupBy(e => e.VehicleId);
-        var perFill = new List<(FuelEntry entry, double distKm)>();
-        foreach (var grp in allByVehicle)
-        {
-            FuelEntry? prev = null;
-            foreach (var e in grp.OrderBy(x => x.Date).ThenBy(x => x.Id))
-            {
-                if (prev is null)
-                {
-                    prev = e;
-                    continue;
-                }
-                var dist = e.OdometerKm - prev.OdometerKm;
-                perFill.Add((e, dist > 0 ? dist : 0));
-                prev = e;
-            }
-        }
-
-        // Only consider entries inside the period for aggregation
-        var perFillInRange = perFill.Where(p => p.entry.Date >= from && p.entry.Date <= to).ToList();
-
-        _hasData = perFillInRange.Any();
-
-        // Per brand
-        _brandAggs = perFillInRange
-            .GroupBy(p => string.IsNullOrWhiteSpace(p.entry.Brand) ? "(unknown)" : p.entry.Brand!.Trim())
-            .Select(g => ToAgg(g.Key, g.Select(x => x.entry), g.Select(x => x.distKm)))
-            .OrderBy(a => a.Key)
-            .ToList();
-
-        // Per grade
-        _gradeAggs = perFillInRange
-            .GroupBy(p => string.IsNullOrWhiteSpace(p.entry.Grade) ? "(unknown)" : p.entry.Grade!.Trim())
-            .Select(g => ToAgg(g.Key, g.Select(x => x.entry), g.Select(x => x.distKm)))
-            .OrderBy(a => a.Key)
-            .ToList();
-
-        StateHasChanged();
-    }
-
-    private BrandAgg ToAgg(string key, IEnumerable<FuelEntry> entries, IEnumerable<double> dists)
-    {
-        var arrE = entries.ToArray();
-        var arrD = dists.ToArray();
-        var totalCost = arrE.Sum(e => e.TotalCost);
-        var totalVol = arrE.Sum(e => e.VolumeL);
-        var totalDist = arrD.Sum();
-
-        var cPerL = FuelTracker.Application.Units.UnitConverter.CostPerLiter(totalCost, totalVol);
-        var cPerLView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(cPerL, Units.Settings.VolumeUnit);
-
-        var consL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(totalDist, totalVol);
-        var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(consL100, Units.Settings.DistanceUnit, Units.Settings.VolumeUnit);
-
-        return new BrandAgg
-        {
-            Key = key,
-            AvgCostPerVolumeView = cPerLView,
-            AvgConsumptionView = consView,
-            Count = arrE.Length
-        };
-    }
-
-    private class BrandAgg
-    {
-        public string Key { get; set; } = "";
-        public decimal AvgCostPerVolumeView { get; set; }
-        public double AvgConsumptionView { get; set; }
-        public int Count { get; set; }
-    }
-
+    // Period selection
     private enum PeriodOption
     {
         Last30,
@@ -244,4 +150,356 @@
         YearToDate,
         Custom
     }
+
+    private PeriodOption _period = PeriodOption.Last30;
+    private MudBlazor.DateRange? _customRange;
+
+    // Selected period aggregates
+    private double _periodDistanceKm;
+    private double _periodVolumeL;
+    private decimal _periodTotalCost;
+    private double _periodAvgDistancePerDayKm;
+    private bool _periodHasData;
+    private double _periodAvgConsumptionView;
+    private decimal _periodAvgCostPerKmView;
+    private decimal _periodAvgCostPerVolumeView;
+
+    // Rolling window config and aggregates (kept for all-time and legacy display calculations)
+    private int _rollingDays = 30;
+    private double _rollingDistanceKm;
+    private double _rollingVolumeL;
+    private decimal _rollingTotalCost;
+    private double _rollingAvgDistancePerDayKm;
+
+    // Charts
+    private string[] _chartLabels = Array.Empty<string>();
+    private List<ChartSeries> _unitPriceSeries = [];
+    private List<ChartSeries> _consumptionSeries = [];
+
+    // Per brand/grade aggregates (all-time, current selection)
+    private List<GroupAggregate> _brandAggs = new();
+    private List<GroupAggregate> _gradeAggs = new();
+
+    // Config: price decimals (2–3 decimals supported; default 2)
+    private int _priceDecimals = 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Units.OnChange += StateHasChanged;
+        var auth = await (AuthTask ?? throw new InvalidOperationException()).ConfigureAwait(false);
+        var idStr = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(idStr, out _userId))
+        {
+            await LoadVehiclesAndStats();
+        }
+    }
+
+    private async Task LoadVehiclesAndStats()
+    {
+        _vehicles = await Db.Set<Vehicle>().Where(v => v.UserId == _userId).OrderBy(v => v.Name).ToListAsync();
+
+        var query = Db.Set<FuelEntry>().Where(e => e.UserId == _userId);
+        if (_selectedVehicleId != Guid.Empty)
+        {
+            query = query.Where(e => e.VehicleId == _selectedVehicleId);
+        }
+
+        // Order deterministically to compute distances between consecutive fills
+        var entries = await query.OrderBy(e => e.VehicleId).ThenBy(e => e.Date).ThenBy(e => e.Id).ToListAsync();
+
+        // Reset aggregates
+        _distanceKm = 0;
+        _volumeL = 0;
+        _totalCost = 0;
+        _perFill.Clear();
+        _rollingDistanceKm = 0;
+        _rollingVolumeL = 0;
+        _rollingTotalCost = 0;
+        _rollingAvgDistancePerDayKm = 0;
+        _brandAggs.Clear();
+        _gradeAggs.Clear();
+
+        // Reset period
+        _periodDistanceKm = 0;
+        _periodVolumeL = 0;
+        _periodTotalCost = 0;
+        _periodAvgDistancePerDayKm = 0;
+        _periodHasData = false;
+        _chartLabels = Array.Empty<string>();
+        _unitPriceSeries = [];
+        _consumptionSeries = [];
+
+        if (entries.Count > 0)
+        {
+            // Build vehicle name lookup
+            var vehicleLookup = _vehicles.ToDictionary(v => v.Id, v => v.Name);
+
+            // Compute per-fill rows and all-time aggregates
+            Guid currentVehicle = Guid.Empty;
+            double lastOdo = double.NaN;
+            DateTime lastDate = DateTime.MinValue;
+
+            foreach (var e in entries)
+            {
+                if (e.VehicleId != currentVehicle)
+                {
+                    currentVehicle = e.VehicleId;
+                    lastOdo = double.NaN;
+                    lastDate = DateTime.MinValue;
+                }
+
+                var odo = e.OdometerKm;
+                double distSinceLast = (!double.IsNaN(lastOdo)) ? Math.Max(0, odo - lastOdo) : 0;
+
+                if (!double.IsNaN(lastOdo))
+                {
+                    // Only entries after a baseline contribute to per-fill
+                    var unitPrice = e.VolumeL > 0 ? (double?)((decimal)e.TotalCost / (decimal)e.VolumeL) : null;
+                    _perFill.Add(new PerFillRow
+                    {
+                        Date = e.Date,
+                        VehicleId = e.VehicleId,
+                        VehicleName = vehicleLookup.TryGetValue(e.VehicleId, out var n) ? n : "",
+                        OdometerKm = odo,
+                        DistanceSinceLastKm = distSinceLast,
+                        VolumeL = e.VolumeL,
+                        UnitPricePerL = unitPrice.HasValue ? (double?)Math.Round(unitPrice.Value, _priceDecimals) : null,
+                        TotalCost = e.TotalCost,
+                        Brand = e.Brand ?? string.Empty,
+                        Grade = e.Grade ?? string.Empty
+                    });
+
+                    _distanceKm += distSinceLast;
+                }
+
+                _volumeL += e.VolumeL;
+                _totalCost += e.TotalCost;
+
+                lastOdo = odo;
+                lastDate = e.Date;
+            }
+
+            // Determine selected period range in UTC (inclusive start, inclusive end day)
+            DateTime utcToday = DateTime.UtcNow.Date;
+            DateTime startUtc;
+            DateTime endUtc = utcToday.AddDays(1).AddTicks(-1); // include today
+            switch (_period)
+            {
+                case PeriodOption.Last30:
+                    startUtc = utcToday.AddDays(-30);
+                    break;
+                case PeriodOption.Last90:
+                    startUtc = utcToday.AddDays(-90);
+                    break;
+                case PeriodOption.YearToDate:
+                    startUtc = new DateTime(utcToday.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    break;
+                case PeriodOption.Custom:
+                    if (_customRange?.Start == null || _customRange?.End == null)
+                    {
+                        // If custom not set, default to last 30
+                        startUtc = utcToday.AddDays(-30);
+                    }
+                    else
+                    {
+                        // Assume DateRange values are local; convert to UTC date boundaries
+                        var startLocal = _customRange.Start.Value.Date;
+                        var endLocal = _customRange.End.Value.Date;
+                        startUtc = DateTime.SpecifyKind(startLocal, DateTimeKind.Local).ToUniversalTime().Date;
+                        var endUtcDay = DateTime.SpecifyKind(endLocal, DateTimeKind.Local).ToUniversalTime().Date;
+                        endUtc = endUtcDay.AddDays(1).AddTicks(-1);
+                    }
+
+                    break;
+                default:
+                    startUtc = utcToday.AddDays(-30);
+                    break;
+            }
+
+            // Period entries and segments
+            var periodEntries = entries.Where(e => e.Date >= startUtc && e.Date <= endUtc).ToList();
+            var periodPerFill = _perFill.Where(r => r.Date >= startUtc && r.Date <= endUtc).ToList();
+
+            _periodHasData = periodEntries.Count > 0 && (periodPerFill.Count > 0 || periodEntries.Any());
+
+            _periodDistanceKm = periodPerFill.Sum(r => r.DistanceSinceLastKm);
+            _periodVolumeL = periodEntries.Sum(e => e.VolumeL);
+            _periodTotalCost = periodEntries.Sum(e => e.TotalCost);
+            int daySpan = Math.Max(1, (int)Math.Ceiling((endUtc - startUtc).TotalDays));
+            _periodAvgDistancePerDayKm = _periodDistanceKm / daySpan;
+
+            // Compute period display metrics
+            var s2 = Units.Settings;
+            var periodConsL100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(_periodDistanceKm, _periodVolumeL);
+            _periodAvgConsumptionView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(periodConsL100, s2.DistanceUnit, s2.VolumeUnit);
+            var periodCPerKm = FuelTracker.Application.Units.UnitConverter.CostPerKm(_periodTotalCost, _periodDistanceKm);
+            _periodAvgCostPerKmView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(periodCPerKm, s2.DistanceUnit);
+            var periodCPerVol = FuelTracker.Application.Units.UnitConverter.CostPerLiter(_periodTotalCost, _periodVolumeL);
+            _periodAvgCostPerVolumeView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(periodCPerVol, s2.VolumeUnit);
+
+            // Build charts
+            if (_periodHasData)
+            {
+                // Labels by date (grouped by day)
+                var ordered = periodEntries.OrderBy(e => e.Date).ToList();
+                var labelDates = ordered.Select(e => e.Date.ToLocalTime().Date).Distinct().OrderBy(d => d).ToList();
+                _chartLabels = labelDates.Select(d => d.ToString("yyyy-MM-dd")).ToArray();
+
+                // Cost per liter series: use average unit price per day
+                var dayToUnitPrices = labelDates.ToDictionary(d => d, d => new List<double>());
+                foreach (var e in periodEntries)
+                {
+                    if (e.VolumeL > 0)
+                    {
+                        var d = e.Date.ToLocalTime().Date;
+                        dayToUnitPrices[d].Add((double)((decimal)e.TotalCost / (decimal)e.VolumeL));
+                    }
+                }
+
+                var unitPriceValues = labelDates.Select(d => dayToUnitPrices[d].Count == 0 ? 0.0 : Math.Round(dayToUnitPrices[d].Average(), _priceDecimals)).ToArray();
+                _unitPriceSeries = [new MudBlazor.ChartSeries { Name = "Cost per L", Data = unitPriceValues }];
+
+                // Consumption series: per-fill segments mapped to their fill date (using segment's date)
+                var s = Units.Settings;
+                var consPerDay = labelDates.ToDictionary(d => d, d => new List<double>());
+                foreach (var seg in periodPerFill)
+                {
+                    if (seg.DistanceSinceLastKm > 0 && seg.VolumeL > 0)
+                    {
+                        var l100 = FuelTracker.Application.Units.UnitConverter.ConsumptionLPer100Km(seg.DistanceSinceLastKm, seg.VolumeL);
+                        var view = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(l100, s.DistanceUnit, s.VolumeUnit);
+                        var d = seg.Date.ToLocalTime().Date;
+                        consPerDay[d].Add(view);
+                    }
+                }
+
+                var consValues = labelDates.Select(d => consPerDay[d].Count == 0 ? 0.0 : consPerDay[d].Average()).ToArray();
+                _consumptionSeries = [new MudBlazor.ChartSeries { Name = "Consumption", Data = consValues }];
+            }
+
+            // Rolling window aggregates (only per-fill segments with both endpoints in window)
+            var windowStartUtc = DateTime.UtcNow.Date.AddDays(-_rollingDays);
+            var windowPerFill = _perFill.Where(r => r.Date >= windowStartUtc).ToList();
+
+            _rollingDistanceKm = windowPerFill.Sum(r => r.DistanceSinceLastKm);
+            _rollingVolumeL = entries.Where(e => e.Date >= windowStartUtc).Sum(e => e.VolumeL);
+            _rollingTotalCost = entries.Where(e => e.Date >= windowStartUtc).Sum(e => e.TotalCost);
+            _rollingAvgDistancePerDayKm = _rollingDays > 0 ? (_rollingDistanceKm / _rollingDays) : 0;
+
+            // Per brand and per grade (selected period, based on per-fill segments)
+            _brandAggs = BuildGroupAggregates(periodPerFill.GroupBy(r => r.Brand));
+            _gradeAggs = BuildGroupAggregates(periodPerFill.GroupBy(r => r.Grade));
+        }
+        else
+        {
+            // No data; keep aggregates at 0
+        }
+
+        StateHasChanged();
+    }
+
+    private List<GroupAggregate> BuildGroupAggregates(IEnumerable<IGrouping<string, PerFillRow>> groups)
+    {
+        var list = new List<GroupAggregate>();
+        foreach (var g in groups)
+        {
+            var segs = g.Where(r => r.DistanceSinceLastKm > 0 && r.VolumeL > 0).ToList();
+            if (segs.Count == 0)
+            {
+                list.Add(new GroupAggregate
+                {
+                    Key = g.Key,
+                    ConsumptionLPer100Km = 0,
+                    CostPerLiter = 0,
+                    CostPerKm = 0,
+                    Count = g.Count()
+                });
+                continue;
+            }
+
+            double totalDist = segs.Sum(r => r.DistanceSinceLastKm);
+            double totalVol = segs.Sum(r => r.VolumeL);
+            decimal totalCost = segs.Sum(r => r.TotalCost);
+
+            var consL100 = totalDist > 0 ? (totalVol / totalDist) * 100.0 : 0;
+            var cPerL = totalVol > 0 ? totalCost / (decimal)totalVol : 0;
+            var cPerKm = totalDist > 0 ? totalCost / (decimal)totalDist : 0;
+
+            list.Add(new GroupAggregate
+            {
+                Key = g.Key,
+                ConsumptionLPer100Km = consL100,
+                CostPerLiter = cPerL,
+                CostPerKm = cPerKm,
+                Count = g.Count()
+            });
+        }
+
+        // Sort by key for stable UI
+        return list.OrderBy(x => x.Key).ToList();
+    }
+
+    private async Task OnVehicleChanged(Guid arg)
+    {
+        _selectedVehicleId = arg;
+        await LoadVehiclesAndStats();
+    }
+
+    private async Task OnRollingDaysChanged(int d)
+    {
+        _rollingDays = Math.Clamp(d, 1, 365);
+        await LoadVehiclesAndStats();
+    }
+
+    private async Task OnPeriodChanged(PeriodOption option)
+    {
+        _period = option;
+        // Reset custom range if switching away
+        if (_period != PeriodOption.Custom)
+            _customRange = null;
+        await LoadVehiclesAndStats();
+    }
+
+    private async Task OnCustomRangeClosed()
+    {
+        if (_period == PeriodOption.Custom)
+        {
+            await LoadVehiclesAndStats();
+        }
+    }
+
+    private static double ConvertDistance(double km, FuelTracker.Application.Units.DistanceUnit unit)
+        => unit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? km : km * 0.621371;
+
+    private static string FormatCurrency(decimal amount)
+        => amount.ToString("0.00");
+
+    private record PerFillRow
+    {
+        public DateTime Date { get; init; }
+        public Guid VehicleId { get; init; }
+        public string VehicleName { get; init; } = "";
+        public double OdometerKm { get; init; }
+        public double DistanceSinceLastKm { get; init; }
+        public double VolumeL { get; init; }
+        public double? UnitPricePerL { get; init; }
+        public decimal TotalCost { get; init; }
+        public string Brand { get; init; } = "";
+        public string Grade { get; init; } = "";
+    }
+
+    private record GroupAggregate
+    {
+        public string Key { get; init; } = "";
+        public double ConsumptionLPer100Km { get; init; }
+        public decimal CostPerLiter { get; init; }
+        public decimal CostPerKm { get; init; }
+        public int Count { get; init; }
+    }
+
+    public void Dispose()
+    {
+        Units.OnChange -= StateHasChanged;
+    }
+
 }

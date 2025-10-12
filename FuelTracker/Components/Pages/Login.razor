@@ -8,6 +8,13 @@
     <MudTextField T="string" @bind-Value="Email" Label="Email" Required=true name="email" />
     <MudTextField T="string" @bind-Value="Password" InputType="InputType.Password" Label="Password" Required=true name="password" />
     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Login</MudButton>
+    
+    <MudText>For demo use email admin@test.com and password Admin123</MudText>
+    
+    @if (Error != null)
+    {
+        <MudAlert Severity="Severity.Error">@Error</MudAlert>
+    }
 </form>
 
 @code {
@@ -18,4 +25,8 @@
 
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
+    
+    
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
 }

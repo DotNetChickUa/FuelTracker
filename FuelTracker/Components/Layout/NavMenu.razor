@@ -2,6 +2,7 @@
     <AuthorizeView>
         <Authorized>
             <MudNavLink Href="/" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+            <MudNavLink Href="/stats/brand" Match="NavLinkMatch.Prefix">Stats Brand</MudNavLink>
             <MudNavLink Href="/profile" Match="NavLinkMatch.Prefix">Profile</MudNavLink>
             <MudNavLink Href="/vehicles" Match="NavLinkMatch.Prefix">Vehicles</MudNavLink>
             <MudNavLink Href="/fuel" Match="NavLinkMatch.Prefix">Fuel</MudNavLink>
@@ -21,13 +22,13 @@
             </MudNavLink>
         </NotAuthorized>
         
-        <MudNavLink Href="/legal/terms" Match="NavLinkMatch.Prefix">
-            <MudIcon Icon="@Icons.Material.Filled.Gavel" Class="me-2" />
-            Terms of Service
-        </MudNavLink>
-        <MudNavLink Href="/legal/privacy" Match="NavLinkMatch.Prefix">
-            <MudIcon Icon="@Icons.Material.Filled.Policy" Class="me-2" />
-            Privacy Policy
-        </MudNavLink>
     </AuthorizeView>
+    <MudNavLink Href="/legal/terms" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.Gavel" Class="me-2"/>
+        Terms of Service
+    </MudNavLink>
+    <MudNavLink Href="/legal/privacy" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.Policy" Class="me-2"/>
+        Privacy Policy
+    </MudNavLink>
 </MudNavMenu>

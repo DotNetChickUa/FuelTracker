@@ -66,7 +66,7 @@ app.MapPost("api/account/login", async (
 
     if (user == null || !PasswordHasher.VerifyPassword(password, user.PasswordHash, user.PasswordSalt))
     {
-        var redirect = "/Login?error=1" +
+        var redirect = "/Login?error=User+not+found+or+password+incorrect." +
                        (string.IsNullOrWhiteSpace(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}");
         return Results.Redirect(redirect);
     }

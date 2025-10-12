@@ -1,17 +1,72 @@
 ﻿@page "/"
-        
+
 <PageTitle>Home</PageTitle>
 
 <AuthorizeView>
     <NotAuthorized>
-        Fuel Tracker Landing page
+        <MudContainer MaxWidth="MaxWidth.False" Class="landing-hero">
+            <MudGrid Justify="Justify.Center" AlignItems="AlignItems.Center" Class="py-12">
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.h3">Track your fuel. Drive smarter.</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mt-2">
+                        Record fill-ups, monitor costs, and understand your vehicle’s efficiency over time.
+                    </MudText>
+                    <MudStack Row="true" Spacing="2" Class="mt-6">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/register"
+                                   StartIcon="@Icons.Material.Filled.DirectionsCar">
+                            Get Started
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/login"
+                                   StartIcon="@Icons.Material.Filled.Login">
+                            Sign In
+                        </MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="mt-2">
+                        By continuing you agree to our
+                        <MudLink Href="/legal/terms">Terms</MudLink>
+                        and
+                        <MudLink Href="/legal/privacy">Privacy</MudLink>
+                        .
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-6" Elevation="3">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.subtitle1">Why Fuel Tracker?</MudText>
+                            <MudList T="string" Dense="true">
+                                <MudListItem>
+                                    <MudIcon Icon="@Icons.Material.Filled.ShowChart" Color="Color.Primary"
+                                             Class="me-2"/>
+                                    Rolling averages and trends
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudIcon Icon="@Icons.Material.Filled.LocalGasStation" Color="Color.Primary"
+                                             Class="me-2"/>
+                                    Per-brand and grade comparisons
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Primary" Class="me-2"/>
+                                    Efficiency metrics in L/100km or MPG
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudIcon Icon="@Icons.Material.Filled.Devices" Color="Color.Primary" Class="me-2"/>
+                                    Great on mobile and desktop
+                                </MudListItem>
+                            </MudList>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
     </NotAuthorized>
     <Authorized>
         <MudStack Spacing="2" Class="mt-4">
             <MudText Typo="Typo.h5">Statistics</MudText>
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                 <MudText>Select vehicle:</MudText>
-                <MudSelect T="Guid" Value="_selectedVehicleId" ValueChanged="OnVehicleChanged" Dense="true" Class="w-25">
+                <MudSelect T="Guid" Value="_selectedVehicleId" ValueChanged="OnVehicleChanged" Dense="true"
+                           Class="w-25">
                     <MudSelectItem Value="Guid.Empty">All vehicles</MudSelectItem>
                     @foreach (var v in _vehicles)
                     {
@@ -27,7 +82,8 @@
                 </MudSelect>
                 @if (_period == PeriodOption.Custom)
                 {
-                    <MudDateRangePicker Dense="true" @bind-DateRange="_customRange" DateFormat="yyyy-MM-dd" PickerClosed ="OnCustomRangeClosed" />
+                    <MudDateRangePicker Dense="true" @bind-DateRange="_customRange" DateFormat="yyyy-MM-dd"
+                                        PickerClosed="OnCustomRangeClosed"/>
                 }
             </MudStack>
 
@@ -63,11 +119,16 @@
             <MudPaper Class="pa-4">
                 <MudStack>
                     <MudText Typo="Typo.subtitle1">All-time (current selection)</MudText>
-                    <MudText>Consumption: @consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
-                    <MudText>Distance per volume: @dpvView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.DistancePerVolumeLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
-                    <MudText>Cost per distance: @cPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
-                    <MudText>Cost per volume: @cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
-                    <MudText>Total distance: @totalDistanceView.ToString("0") @distUnitShort | Total spend: @FormatCurrency(_totalCost)</MudText>
+                    <MudText>
+                        Consumption: @consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                    <MudText>Distance per
+                        volume: @dpvView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.DistancePerVolumeLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                    <MudText>Cost per
+                        distance: @cPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
+                    <MudText>Cost per
+                        volume: @cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
+                    <MudText>Total distance: @totalDistanceView.ToString("0") @distUnitShort | Total
+                        spend: @FormatCurrency(_totalCost)</MudText>
                 </MudStack>
             </MudPaper>
 
@@ -76,18 +137,21 @@
                     <MudText Typo="Typo.subtitle1">Overview Dashboard (Selected period)</MudText>
                     @if (!_periodHasData)
                     {
-                        <MudText Typo="Typo.caption">No data in the selected range. Try a different period or vehicle.</MudText>
+                        <MudText Typo="Typo.caption">No data in the selected range. Try a different period or vehicle.
+                        </MudText>
                     }
                     else
                     {
                         <MudStack Row="true" Spacing="6">
                             <MudStack>
                                 <MudText Typo="Typo.overline">Rolling avg cost per volume</MudText>
-                                <MudText Typo="Typo.h6">@_periodAvgCostPerVolumeView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
+                                <MudText
+                                    Typo="Typo.h6">@_periodAvgCostPerVolumeView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudText>
                             </MudStack>
                             <MudStack>
                                 <MudText Typo="Typo.overline">Rolling avg consumption</MudText>
-                                <MudText Typo="Typo.h6">@_periodAvgConsumptionView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
+                                <MudText
+                                    Typo="Typo.h6">@_periodAvgConsumptionView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudText>
                             </MudStack>
                             <MudStack>
                                 <MudText Typo="Typo.overline">Total spend</MudText>
@@ -95,15 +159,18 @@
                             </MudStack>
                             <MudStack>
                                 <MudText Typo="Typo.overline">Total distance</MudText>
-                                <MudText Typo="Typo.h6">@ConvertDistance(_periodDistanceKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
+                                <MudText
+                                    Typo="Typo.h6">@ConvertDistance(_periodDistanceKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
                             </MudStack>
                             <MudStack>
                                 <MudText Typo="Typo.overline">Avg cost per distance</MudText>
-                                <MudText Typo="Typo.h6">@_periodAvgCostPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
+                                <MudText
+                                    Typo="Typo.h6">@_periodAvgCostPerKmView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudText>
                             </MudStack>
                             <MudStack>
                                 <MudText Typo="Typo.overline">Avg distance/day</MudText>
-                                <MudText Typo="Typo.h6">@ConvertDistance(_periodAvgDistancePerDayKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
+                                <MudText
+                                    Typo="Typo.h6">@ConvertDistance(_periodAvgDistancePerDayKm, Units.Settings.DistanceUnit).ToString("0") @distUnitShort</MudText>
                             </MudStack>
                         </MudStack>
                     }
@@ -120,10 +187,11 @@
                     else
                     {
                         <MudText Typo="Typo.subtitle2">Cost per liter over time</MudText>
-                        <MudChart ChartType="ChartType.Line" InputLabels="_chartLabels" ChartSeries="_unitPriceSeries" />
-                        <MudDivider Class="my-4" />
+                        <MudChart ChartType="ChartType.Line" InputLabels="_chartLabels" ChartSeries="_unitPriceSeries"/>
+                        <MudDivider Class="my-4"/>
                         <MudText Typo="Typo.subtitle2">Consumption over time</MudText>
-                        <MudChart  ChartType="ChartType.Line" InputLabels="_chartLabels" ChartSeries="_consumptionSeries" />
+                        <MudChart ChartType="ChartType.Line" InputLabels="_chartLabels"
+                                  ChartSeries="_consumptionSeries"/>
                     }
                 </MudStack>
             </MudPaper>
@@ -135,12 +203,20 @@
                         <HeaderContent>
                             <MudTh>Date</MudTh>
                             <MudTh>Vehicle</MudTh>
-                            <MudTh>Odometer (@(Units.Settings.DistanceUnit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? "km" : "mi"))</MudTh>
-                            <MudTh>Distance since last (@(Units.Settings.DistanceUnit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? "km" : "mi"))</MudTh>
+                            <MudTh>Odometer
+                                (@(Units.Settings.DistanceUnit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? "km" : "mi"))
+                            </MudTh>
+                            <MudTh>Distance since last
+                                (@(Units.Settings.DistanceUnit == FuelTracker.Application.Units.DistanceUnit.Kilometer ? "km" : "mi"))
+                            </MudTh>
                             <MudTh>Volume (L)</MudTh>
                             <MudTh>Unit price (@Units.Settings.CurrencyIsoCode/L)</MudTh>
-                            <MudTh>Efficiency (@FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit))</MudTh>
-                            <MudTh>Cost per distance (@FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit))</MudTh>
+                            <MudTh>Efficiency
+                                (@FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit))
+                            </MudTh>
+                            <MudTh>Cost per distance
+                                (@FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit))
+                            </MudTh>
                             <MudTh>Total</MudTh>
                         </HeaderContent>
                         <RowTemplate Context="row">
@@ -167,65 +243,13 @@
                             <MudTd>@FormatCurrency(row.TotalCost)</MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
-                            <MudText Typo="Typo.caption">Add at least two fill-ups per vehicle to see per-fill metrics.</MudText>
+                            <MudText Typo="Typo.caption">Add at least two fill-ups per vehicle to see per-fill
+                                metrics.
+                            </MudText>
                         </NoRecordsContent>
                     </MudTable>
                 </MudStack>
             </MudPaper>
-
-            <MudStack Row="true" Spacing="2">
-                <MudPaper Class="pa-4" Style="flex:1;">
-                    <MudText Typo="Typo.subtitle1">Per brand (selected period)</MudText>
-                    <MudTable Items="_brandAggs" Dense="true" Hover="true" Bordered="true">
-                        <HeaderContent>
-                            <MudTh>Brand</MudTh>
-                            <MudTh>Avg consumption</MudTh>
-                            <MudTh>Avg cost per volume</MudTh>
-                            <MudTh>Avg cost per distance</MudTh>
-                            <MudTh>Fill-ups</MudTh>
-                        </HeaderContent>
-                        <RowTemplate Context="b">
-                            @{
-                                var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(b.ConsumptionLPer100Km, Units.Settings.DistanceUnit, Units.Settings.VolumeUnit);
-                                var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(b.CostPerLiter, Units.Settings.VolumeUnit);
-                                var cPerDistView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(b.CostPerKm, Units.Settings.DistanceUnit);
-                            }
-                            <MudTd>@(string.IsNullOrWhiteSpace(b.Key) ? "(Unknown)" : b.Key)</MudTd>
-                            <MudTd>@consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudTd>
-                            <MudTd>@cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudTd>
-                            <MudTd>@cPerDistView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudTd>
-                            <MudTd>@b.Count</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudPaper>
-
-                <MudPaper Class="pa-4" Style="flex:1;">
-                    <MudText Typo="Typo.subtitle1">Per grade (selected period)</MudText>
-                    <MudTable Items="_gradeAggs" Dense="true" Hover="true" Bordered="true">
-                        <HeaderContent>
-                            <MudTh>Grade</MudTh>
-                            <MudTh>Avg consumption</MudTh>
-                            <MudTh>Avg cost per volume</MudTh>
-                            <MudTh>Avg cost per distance</MudTh>
-                            <MudTh>Fill-ups</MudTh>
-                        </HeaderContent>
-                        <RowTemplate Context="g">
-                            @{
-                                var consView = FuelTracker.Application.Units.UnitConverter.ConvertConsumption(g.ConsumptionLPer100Km, Units.Settings.DistanceUnit, Units.Settings.VolumeUnit);
-                                var cPerVolView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerVolume(g.CostPerLiter, Units.Settings.VolumeUnit);
-                                var cPerDistView = FuelTracker.Application.Units.UnitConverter.ConvertCostPerDistance(g.CostPerKm, Units.Settings.DistanceUnit);
-                            }
-                            <MudTd>@(string.IsNullOrWhiteSpace(g.Key) ? "(Unknown)" : g.Key)</MudTd>
-                            <MudTd>@consView.ToString("0.0") @FuelTracker.Application.Units.UnitConverter.ConsumptionLabel(Units.Settings.DistanceUnit, Units.Settings.VolumeUnit)</MudTd>
-                            <MudTd>@cPerVolView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerVolumeLabel(Units.Settings.CurrencyIsoCode, Units.Settings.VolumeUnit)</MudTd>
-                            <MudTd>@cPerDistView.ToString("0.00") @FuelTracker.Application.Units.UnitConverter.CostPerDistanceLabel(Units.Settings.CurrencyIsoCode, Units.Settings.DistanceUnit)</MudTd>
-                            <MudTd>@g.Count</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudPaper>
-            </MudStack>
-
-            <MudText Typo="Typo.caption">Switch units in Settings to toggle between L/100km and MPG. Stored canonical data remains km/L.</MudText>
         </MudStack>
     </Authorized>
 </AuthorizeView>
@@ -236,10 +260,13 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @code {
+
     [Microsoft.AspNetCore.Components.Inject]
     private FuelTracker.Application.Units.IUnitService Units { get; set; } = default!;
+
     [Microsoft.AspNetCore.Components.Inject]
     private FuelTracker.Infrastructure.Database.FuelTrackerDbContext Db { get; set; } = default!;
+
     [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
 
     private List<Vehicle> _vehicles = new();
@@ -255,7 +282,14 @@
     private List<PerFillRow> _perFill = new();
 
     // Period selection
-    private enum PeriodOption { Last30, Last90, YearToDate, Custom }
+    private enum PeriodOption
+    {
+        Last30,
+        Last90,
+        YearToDate,
+        Custom
+    }
+
     private PeriodOption _period = PeriodOption.Last30;
     private MudBlazor.DateRange? _customRange;
 
@@ -414,6 +448,7 @@
                         var endUtcDay = DateTime.SpecifyKind(endLocal, DateTimeKind.Local).ToUniversalTime().Date;
                         endUtc = endUtcDay.AddDays(1).AddTicks(-1);
                     }
+
                     break;
                 default:
                     startUtc = utcToday.AddDays(-30);
@@ -459,6 +494,7 @@
                         dayToUnitPrices[d].Add((double)((decimal)e.TotalCost / (decimal)e.VolumeL));
                     }
                 }
+
                 var unitPriceValues = labelDates.Select(d => dayToUnitPrices[d].Count == 0 ? 0.0 : Math.Round(dayToUnitPrices[d].Average(), _priceDecimals)).ToArray();
                 _unitPriceSeries = [new MudBlazor.ChartSeries { Name = "Cost per L", Data = unitPriceValues }];
 
@@ -475,8 +511,9 @@
                         consPerDay[d].Add(view);
                     }
                 }
+
                 var consValues = labelDates.Select(d => consPerDay[d].Count == 0 ? 0.0 : consPerDay[d].Average()).ToArray();
-                _consumptionSeries = [ new MudBlazor.ChartSeries { Name = "Consumption", Data = consValues } ];
+                _consumptionSeries = [new MudBlazor.ChartSeries { Name = "Consumption", Data = consValues }];
             }
 
             // Rolling window aggregates (only per-fill segments with both endpoints in window)
@@ -536,6 +573,7 @@
                 Count = g.Count()
             });
         }
+
         // Sort by key for stable UI
         return list.OrderBy(x => x.Key).ToList();
     }
@@ -602,4 +640,5 @@
     {
         Units.OnChange -= StateHasChanged;
     }
+
 }
