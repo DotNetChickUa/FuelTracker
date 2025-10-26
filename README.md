@@ -1,5 +1,9 @@
 # FuelTracker
 
+[![Athena Award Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Faward.athena.hackclub.com%2Fapi%2Fbadge)](https://award.athena.hackclub.com?utm_source=readme)
+
+[Demo](https://fueltracker-ey8c.onrender.com/)
+
 FuelTracker is a web app that helps drivers record fuel fill-ups and analyze consumption and costs over time. It supports multiple vehicles per user, calculates per-fill and rolling metrics, and provides brand/grade comparisons. Storage is canonical (km, liters); views respect user preferences for units and currency.
 
 Features at a glance
